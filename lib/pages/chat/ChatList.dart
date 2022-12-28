@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:provider/provider.dart';
 import 'ChatPage.dart';
 import 'dart:convert';
 
-class Friend {
+class Chat {
   String id;
   String nickname;
   String avatarUrl;
   String lastMessage;
   String lastMessageTime;
 
-  Friend({
+  Chat({
     required this.id,
     required this.nickname,
     required this.avatarUrl,
@@ -33,28 +34,52 @@ class Friend {
   }
 }
 
-class FriendListModel with ChangeNotifier {
+class ChatListModel with ChangeNotifier {
   //好友列表,使用Map来存储好友信息,方便通过id来查找好友和去重
-  final Map<String, Friend> _friends = {};
+  final Map<String, Chat> _chats = {};
 
-  List<Friend> get friends => _friends.values.toList();
+  List<Chat> get chats => _chats.values.toList();
 
-  void addFriend(Friend friend) {
-    _friends[friend.id] = friend;
+  void addChat(Chat chat) {
+    _chats[chat.id] = chat;
     notifyListeners();
   }
 }
 
 // 实现好友列表的展示
-class FriendList extends StatelessWidget {
+class ChatList extends StatelessWidget {
   var context;
 
-  IOWebSocketChannel channel =
-      IOWebSocketChannel.connect('ws://127.0.0.1:8080/websocket');
+  late IOWebSocketChannel channel;
 
-  FriendList({Key? key}) {
+
+  void initWebSocket() async {
+
+    print("initWebSocket");
+    //获取数据库中的的用户信息
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? userInfo = prefs.getString('userInfo');
+    if (userInfo == null) {
+      return;
+    }
+
+    Map<String, dynamic> user = jsonDecode(userInfo);
+
+    channel = IOWebSocketChannel.connect('ws://localhost:8080/websocket/${user['id']}');
+
+    print(user['id']);
+
+    //监听服务端的消息
+    channel.stream.listen(
+      recieveNewMessage,
+    );
+  }
+
+  ChatList({Key? key}) {
+
+
     //  获取本地账号信息并发送给服务端，服务端会将该账号加入到在线列表中
-    Friend test = Friend(
+    Chat test = Chat(
       id: '0',
       nickname: '测试',
       avatarUrl:
@@ -63,16 +88,9 @@ class FriendList extends StatelessWidget {
       lastMessageTime: "8-1 12:00",
     );
 
-    dynamic message = {
-      'type': 'message',
-      'data': test.toString(),
-    };
 
-    channel.sink.add(jsonEncode(message));
-    //监听服务端的消息
-    channel.stream.listen(
-      recieveNewMessage,
-    );
+    initWebSocket();
+
   }
 
   //收到新消息后的处理事件
@@ -102,7 +120,7 @@ class FriendList extends StatelessWidget {
 
       Map<String, dynamic> friendList = jsonDecode(data);
 
-      Friend friend = Friend(
+      Chat friend = Chat(
         id: friendList['id'],
         nickname: friendList['nickname'],
         avatarUrl: friendList['avatarUrl'],
@@ -113,7 +131,7 @@ class FriendList extends StatelessWidget {
       print("收到好友列表消息：$friend");
 
       //将好友添加到好友列表中
-      Provider.of<FriendListModel>(context, listen: false).addFriend(friend);
+      Provider.of<ChatListModel>(context, listen: false).addChat(friend);
     }
   }
 
@@ -124,15 +142,15 @@ class FriendList extends StatelessWidget {
   Widget build(BuildContext context) {
     this.context = context;
     return ChangeNotifierProvider(
-      create: (context) => FriendListModel(),
-      child: Consumer<FriendListModel>(
+      create: (context) => ChatListModel(),
+      child: Consumer<ChatListModel>(
         builder: (context, friendListModel, child) {
           this.context = context;
           return Scaffold(
               body: ListView.builder(
-            itemCount: friendListModel.friends.length,
+            itemCount: friendListModel.chats.length,
             itemBuilder: (context, index) {
-              final friend = friendListModel.friends[index];
+              final friend = friendListModel.chats[index];
 
               return InkWell(
                 onTap: () {

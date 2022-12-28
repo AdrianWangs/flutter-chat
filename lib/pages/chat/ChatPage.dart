@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
   @override
   _ChatPageState createState() => _ChatPageState();
 }

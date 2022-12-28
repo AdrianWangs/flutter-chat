@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:web_socket_channel/io.dart';
 import 'FriendList.dart';
 
 void main() {
@@ -30,8 +31,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,7 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       //首页使用FriendList
-      body: const FriendList(),
+      body: FriendList(),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,

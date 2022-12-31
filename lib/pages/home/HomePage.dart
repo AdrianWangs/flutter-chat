@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../chat/ChatList.dart';
+import '../friend/FriendList.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -14,6 +15,35 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
 
+
+  //当前选中的tab
+  int _selectedIndex = 0;
+
+  //选中的页面
+  Widget body = ChatList();
+
+  ///底部导航栏点击事件
+  void jumpTo(int index){
+    setState(() {
+      _selectedIndex = index;
+      switch(index){
+        case 0:
+          body = ChatList();
+          break;
+        case 1:
+          body = FriendList();
+          break;
+        case 2:
+          break;
+        case 3:
+          break;
+      }
+
+    });
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,7 +51,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       //首页使用FriendList
-      body: ChatList(),
+      body: body,
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -54,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items:const  <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: '聊天列表',
@@ -68,9 +98,9 @@ class _MyHomePageState extends State<MyHomePage> {
             label: '我的',
           ),
         ],
-        currentIndex: 0,
+        currentIndex: _selectedIndex,
         selectedItemColor: const Color.fromARGB(255, 38, 118, 192),
-        onTap: (int index) {},
+        onTap: jumpTo,
       ),
     );
   }

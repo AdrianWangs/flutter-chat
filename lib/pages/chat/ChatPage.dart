@@ -5,13 +5,29 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+
+  final String account;
+
+  @override
+  const ChatPage({Key? key, required this.account}) : super(key: key);
 
   @override
   _ChatPageState createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
+
+  // 定义私有变量
+  late String _account;
+
+  @override
+  void initState() {
+    super.initState();
+    // 在构造函数中初始化私有变量
+    _account = widget.account;
+  }
+
+
   String message = '';
   final List<Map<String, dynamic>> messages = [];
 
@@ -148,6 +164,9 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+
+    print(_account);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat'),

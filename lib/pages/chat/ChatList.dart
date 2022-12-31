@@ -11,6 +11,7 @@ class Chat {
   String avatarUrl;
   String lastMessage;
   String lastMessageTime;
+  String account;
 
   Chat({
     required this.id,
@@ -18,6 +19,7 @@ class Chat {
     required this.avatarUrl,
     required this.lastMessage,
     required this.lastMessageTime,
+    required this.account,
   });
 
   //重写toString方法，方便打印
@@ -30,6 +32,7 @@ class Chat {
       'avatarUrl': avatarUrl,
       'lastMessage': lastMessage,
       'lastMessageTime': lastMessageTime,
+      'account': account,
     });
   }
 }
@@ -52,9 +55,7 @@ class ChatList extends StatelessWidget {
 
   late IOWebSocketChannel channel;
 
-
   void initWebSocket() async {
-
     print("initWebSocket");
     //获取数据库中的的用户信息
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -65,7 +66,8 @@ class ChatList extends StatelessWidget {
 
     Map<String, dynamic> user = jsonDecode(userInfo);
 
-    channel = IOWebSocketChannel.connect('ws://localhost:8080/websocket/${user['id']}');
+    channel = IOWebSocketChannel.connect(
+        'ws://localhost:8080/websocket/${user['id']}');
 
     print(user['id']);
 
@@ -76,21 +78,18 @@ class ChatList extends StatelessWidget {
   }
 
   ChatList({Key? key}) {
-
-
-    //  获取本地账号信息并发送给服务端，服务端会将该账号加入到在线列表中
-    Chat test = Chat(
-      id: '0',
-      nickname: '测试',
-      avatarUrl:
-          'https://wyz-1304875448.cos.ap-nanjing.myqcloud.com/imgsFromGiteed008f005ea6c4f63a325442cee728719_qq_30347475.jpg.png',
-      lastMessage: '你好',
-      lastMessageTime: "8-1 12:00",
-    );
-
+    //
+    // //  获取本地账号信息并发送给服务端，服务端会将该账号加入到在线列表中
+    // Chat test = Chat(
+    //   id: '0',
+    //   nickname: '测试',
+    //   avatarUrl:
+    //       'https://wyz-1304875448.cos.ap-nanjing.myqcloud.com/imgsFromGiteed008f005ea6c4f63a325442cee728719_qq_30347475.jpg.png',
+    //   lastMessage: '你好',
+    //   lastMessageTime: "8-1 12:00",
+    // );
 
     initWebSocket();
-
   }
 
   //收到新消息后的处理事件
@@ -108,6 +107,9 @@ class ChatList extends StatelessWidget {
       return;
     }
 
+
+
+
     //获取消息类型
     String type = json['type'];
 
@@ -116,23 +118,39 @@ class ChatList extends StatelessWidget {
 
     //如果是好友列表消息
     if (type == 'message') {
-      //将消息转换为json格式
 
+
+      //json的格式：
+      // {
+      //   "type": "message",
+      //   "data": {
+      //    "id": "1",
+      //    "nickname": "测试",
+      //    "avatarUrl": "https://wyz-1304875448.cos.ap-nanjing.myqcloud.com/imgsFromGiteed008f005ea6c4f63a325442cee728719_qq_30347475.jpg.png",
+      //    "lastMessage": "你好",
+      //    "lastMessageTime": "8-1 12:00",
+      //    "account": "123456"
+      //   }
+
+      //将消息转换为json格式
       Map<String, dynamic> friendList = jsonDecode(data);
 
-      Chat friend = Chat(
-        id: friendList['id'],
-        nickname: friendList['nickname'],
-        avatarUrl: friendList['avatarUrl'],
-        lastMessage: friendList['lastMessage'],
-        lastMessageTime: friendList['lastMessageTime'],
-      );
-
-      print("收到好友列表消息：$friend");
-
-      //将好友添加到好友列表中
-      Provider.of<ChatListModel>(context, listen: false).addChat(friend);
+      addMessageList(friendList);
     }
+  }
+
+  void addMessageList(Map<String, dynamic> friendList) {
+    Chat friend = Chat(
+      id: friendList['id'],
+      nickname: friendList['nickname'],
+      avatarUrl: friendList['avatarUrl'],
+      lastMessage: friendList['lastMessage'],
+      lastMessageTime: friendList['lastMessageTime'],
+      account: friendList['account'],
+    );
+
+    //将好友添加到好友列表中
+    Provider.of<ChatListModel>(context, listen: false).addChat(friend);
   }
 
   //添加一个id
@@ -148,30 +166,30 @@ class ChatList extends StatelessWidget {
           this.context = context;
           return Scaffold(
               body: ListView.builder(
-            itemCount: friendListModel.chats.length,
-            itemBuilder: (context, index) {
-              final friend = friendListModel.chats[index];
+                itemCount: friendListModel.chats.length,
+                itemBuilder: (context, index) {
+                  final friend = friendListModel.chats[index];
 
-              return InkWell(
-                onTap: () {
-                  this.id = friend.id;
-                  //跳转到聊天页面
-                  Navigator.push(this.context,
-                      MaterialPageRoute(builder: (context) {
-                    return ChatPage();
-                  }));
-                },
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(
-                      friend.avatarUrl,
-                    ),
-                  ),
+                  return InkWell(
+                    onTap: () {
+                      //跳转到聊天页面
+                      Navigator.push(this.context,
+                          MaterialPageRoute(builder: (context) {
+                            return ChatPage(account: friend.account);
+                          }
+                      ));
+                    },
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(
+                          friend.avatarUrl,
+                        ),
+                      ),
                   //点击好友头像，跳转到聊天页面
-                  title: Text(friend.nickname),
-                  subtitle: Text(friend.lastMessage),
-                  trailing: Text(friend.lastMessageTime,
-                      style: TextStyle(color: Colors.grey, fontSize: 14.0)),
+                      title: Text(friend.nickname),
+                      subtitle: Text(friend.lastMessage),
+                      trailing: Text(friend.lastMessageTime,
+                      style: const TextStyle(color: Colors.grey, fontSize: 14.0)),
                 ),
               );
             },

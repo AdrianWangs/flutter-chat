@@ -1,6 +1,4 @@
 
-
-
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -73,14 +71,43 @@ class FriendList extends StatelessWidget{
 
   var context;
 
-  //通过网络获取好友列表
-  void getFriendList() async{
+  FriendList({super.key});
 
-    //等待5秒,模拟网络请求
-    await Future.delayed(Duration(seconds: 5));
+  //通过网络获取好友列表
+  void setFriendList() async{
+
+
+
+    List<Friend> friends = [];
 
     //从SharedPreferences中获取cookie
     SharedPreferences prefs = await SharedPreferences.getInstance();
+
+
+    try{
+      //从prefs中获取friendList
+      String friendJson = prefs.getString("friendList")!;
+
+      if(friendJson != null && friendJson != ""){
+
+
+        //将friendList转换为List
+        List friendListJson = jsonDecode(friendJson);
+
+        //将friendListJson转换为List<Friend>
+        friendListJson.forEach((friend) {
+          friends.add(Friend(
+            account: friend["account"],
+            nickname: friend["nickname"],
+            avatarUrl: friend["avatarUrl"],
+            isOnline: friend["isOnline"],
+          ));
+        });
+      }
+    }catch(e){
+      print(e);
+    }
+
     String? cookie = prefs.getString('cookie');
     if(cookie == null){
       throw Exception('cookie为空');
@@ -91,6 +118,8 @@ class FriendList extends StatelessWidget{
     var dio = Dio();
     dio.options.headers['cookie'] = cookie;
     var response = await dio.get(Env.HOST + '/friendList');
+
+
 
     //返回数据格式：
     // [{
@@ -107,7 +136,9 @@ class FriendList extends StatelessWidget{
     //将List<Map<String, dynamic>>转换为List<Friend>
 
 
-    List<Friend> friends = friendList.map((e) => Friend(
+    prefs.setString('friendList', jsonEncode(friendList));
+
+    friends = friendList.map((e) => Friend(
       account: e['friendAccount'],
       nickname: e['friendName'],
       avatarUrl: e['friendAvatarUrl'],
@@ -115,18 +146,18 @@ class FriendList extends StatelessWidget{
     )).toList();
 
 
+
     //将好友列表添加到FriendListModel中
     Provider.of<FriendListModel>(context, listen: false).addAll(friends);
 
-
   }
+
 
 
   @override
   Widget build(BuildContext context) {
 
-    //开启异步任务,获取好友列表
-    getFriendList();
+    setFriendList();
 
     return ChangeNotifierProvider(
       create: (context) => FriendListModel(),
@@ -152,7 +183,7 @@ class FriendList extends StatelessWidget{
                     Navigator.push(
                       this.context,
                       MaterialPageRoute(builder: (context) {
-                        return ChatPage(account: friend.account);
+                        return ChatPage(account: friend.account,nickname: friend.nickname,avatarUrl: friend.avatarUrl,);
                       }),
                     );
                   },

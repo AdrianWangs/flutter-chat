@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../chat/ChatList.dart';
@@ -16,12 +15,23 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
 
+  String _title = "";
+
   //当前选中的tab
   int _selectedIndex = 0;
 
   //选中的页面
   Widget body = ChatList();
 
+  @override
+  void initState() {
+    super.initState();
+
+    _title = widget.title;
+
+  }
+  
+  
   ///底部导航栏点击事件
   void jumpTo(int index){
     setState(() {
@@ -29,15 +39,20 @@ class _MyHomePageState extends State<MyHomePage> {
       switch(index){
         case 0:
           body = ChatList();
+          _title = "消息列表";
           break;
         case 1:
           body = FriendList();
+          _title = "好友列表";
           break;
         case 2:
           break;
         case 3:
           break;
       }
+
+      print("jumpTo: $index");
+      print("jumpTo: $_title");
 
     });
   }
@@ -46,9 +61,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text(_title),
       ),
       //首页使用FriendList
       body: body,

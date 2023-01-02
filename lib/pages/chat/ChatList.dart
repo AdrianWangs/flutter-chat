@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_demo/env/Env.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:provider/provider.dart';
@@ -66,10 +67,9 @@ class ChatList extends StatelessWidget {
 
     Map<String, dynamic> user = jsonDecode(userInfo);
 
-    channel = IOWebSocketChannel.connect(
-        'ws://localhost:8080/websocket/${user['id']}');
 
-    print(user['id']);
+    channel = IOWebSocketChannel.connect('${Env.SOCKET_HOST}/websocket/${user['id']}');
+
 
     //监听服务端的消息
     channel.stream.listen(
@@ -78,16 +78,6 @@ class ChatList extends StatelessWidget {
   }
 
   ChatList({Key? key}) {
-    //
-    // //  获取本地账号信息并发送给服务端，服务端会将该账号加入到在线列表中
-    // Chat test = Chat(
-    //   id: '0',
-    //   nickname: '测试',
-    //   avatarUrl:
-    //       'https://wyz-1304875448.cos.ap-nanjing.myqcloud.com/imgsFromGiteed008f005ea6c4f63a325442cee728719_qq_30347475.jpg.png',
-    //   lastMessage: '你好',
-    //   lastMessageTime: "8-1 12:00",
-    // );
 
     initWebSocket();
   }
@@ -175,7 +165,7 @@ class ChatList extends StatelessWidget {
                       //跳转到聊天页面
                       Navigator.push(this.context,
                           MaterialPageRoute(builder: (context) {
-                            return ChatPage(account: friend.account);
+                            return ChatPage(account: friend.account,nickname: friend.nickname,avatarUrl: friend.avatarUrl);
                           }
                       ));
                     },

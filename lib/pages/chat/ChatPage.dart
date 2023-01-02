@@ -1,15 +1,26 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_demo/env/Env.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/io.dart';
 
 class ChatPage extends StatefulWidget {
 
   final String account;
+  final String nickname;
+  final String avatarUrl;
 
   @override
-  const ChatPage({Key? key, required this.account}) : super(key: key);
+  const ChatPage({
+    Key? key,
+    required this.account,
+    required this.nickname,
+    required this.avatarUrl,
+  }) : super(key: key);
 
   @override
   _ChatPageState createState() => _ChatPageState();
@@ -19,13 +30,98 @@ class _ChatPageState extends State<ChatPage> {
 
   // 定义私有变量
   late String _account;
+  late String _nickname;
+  late String _avatarUrl;
+
+  late String _myAccount;
+  late String _myNickname;
+  late String _myAvatarUrl;
+  late String _myId;
+
 
   @override
   void initState() {
     super.initState();
     // 在构造函数中初始化私有变量
     _account = widget.account;
+    _nickname = widget.nickname;
+    _avatarUrl = widget.avatarUrl;
+
+    init();
+
   }
+
+  void init() async{
+
+    //从Preferences中获取用户信息
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String userInfo = prefs.getString("userInfo") ?? "";
+
+    //将用户信息转换为Map
+    Map<String, dynamic> userMap = jsonDecode(userInfo);
+
+    //初始化私有变量
+    _myAccount = userMap["account"];
+    _myNickname = userMap["name"];
+    _myAvatarUrl = userMap["avatarUrl"];
+    //将int类型的id转换为String类型
+    _myId = userMap["id"].toString();
+
+    initWebSocket();
+
+  }
+
+
+
+  late IOWebSocketChannel channel;
+
+  void initWebSocket(){
+
+    //连接WebSocket
+    channel = IOWebSocketChannel.connect("${Env.SOCKET_HOST}/websocket/$_myId");
+
+    //监听WebSocket消息
+    channel.stream.listen(handleMessage);
+
+  }
+
+  //消息处理
+  void handleMessage(message){
+
+    print("message: $message");
+    //将消息转换为Map
+    Map<String, dynamic> messageMap = jsonDecode(message);
+
+    //提取data
+    Map<String,dynamic> data = messageMap["data"];
+
+    setState(() {
+      //将消息添加到消息列表中
+      messages.add(data);
+    });
+
+
+    //判断消息类型
+    // switch(messageMap["type"]){
+    //   case "message":
+    //   //如果是消息类型,则将消息添加到消息列表中
+    //     addMessage(messageMap);
+    //     break;
+    //   case "online":
+    //   //TODO 如果是上线消息,则将好友状态改为在线
+    //   //changeFriendStatus(messageMap["id"], true);
+    //     break;
+    //   case "offline":
+    //   //TODO 如果是下线消息,则将好友状态改为离线
+    //   //changeFriendStatus(messageMap["id"], false);
+    //     break;
+    // }
+
+  }
+
+
+
+
 
 
   String message = '';
@@ -46,10 +142,10 @@ class _ChatPageState extends State<ChatPage> {
 
       sendData({
         'type': 'text',
-        'sender': 'me',
+        'sender': _account,
         'text': message,
         'timestamp': DateTime.now(),
-        'nickname': 'Me',
+        'nickname': _myNickname,
         'avatarUrl': 'https://www.baidu.com/img/bd_logo1.png?where=super'
       });
     }
@@ -131,6 +227,37 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void sendData(Map<String, dynamic> data) {
+
+
+    //通过WebSocket发送消息
+    //检查channel是否已经连接
+    if(channel.sink != null){
+
+      //将消息转换为json字符串，消息中存在的时间戳需要转换为字符串
+      Map<String, dynamic> messageMap = {};
+
+      for(var key in data.keys){
+        if(key == "timestamp"){
+          messageMap[key] = data[key].toString();
+        }else{
+          messageMap[key] = data[key];
+        }
+      }
+
+      //将消息封装到新的Map中的data字段中
+      Map<String, dynamic> message = {
+        //消息是单发还是群发
+        "type": "1",
+        "toUserAccount": _account,
+        "data": messageMap
+      };
+
+      channel.sink.add(jsonEncode(message));
+    }else{
+      print("channel is null");
+    }
+
+
     setState(() {
       messages.add(data);
       message = '';
@@ -169,7 +296,7 @@ class _ChatPageState extends State<ChatPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: Text(_nickname),
       ),
       body: Column(
         children: <Widget>[
@@ -207,7 +334,7 @@ class _ChatPageState extends State<ChatPage> {
                 itemBuilder: (context, index) {
                   final message = messages[index];
                   final type = message['type'];
-                  final isMe = message['sender'] == 'me';
+                  final isMe = message['sender'] == _myAccount;
                   final avatarUrl = message['avatarUrl'];
                   final nickname = message['nickname'];
                   final timestamp = message['timestamp'];

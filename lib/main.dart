@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: '好友列表'),
+      home: const MyHomePage(title: '消息列表'),
       routes: {
         '/login': (context) => const LoginPage()
       },

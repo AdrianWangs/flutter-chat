@@ -58,7 +58,6 @@ class FriendListModel with ChangeNotifier {
       _friends[friend.account] = friend;
     });
 
-
     notifyListeners();
   }
 
@@ -178,7 +177,7 @@ class FriendList extends StatelessWidget{
                   ),
                   title: Text(friendListModel.friends[index].nickname),
                   subtitle: Text(friendListModel.friends[index].account),
-                  trailing: friendListModel.friends[index].isOnline ? Icon(Icons.circle, color: Colors.green,) : Icon(Icons.circle, color: Colors.grey,),
+                  trailing: friendListModel.friends[index].isOnline ? const Icon(Icons.circle, color: Colors.green,) : const Icon(Icons.circle, color: Colors.grey,),
                   onTap: () {
                     Navigator.push(
                       this.context,

@@ -95,6 +95,9 @@ class _ChatPageState extends State<ChatPage> {
     //提取data
     Map<String,dynamic> data = messageMap["data"];
 
+
+    //TODO 将消息储存到本地数据库
+
     setState(() {
       //将消息添加到消息列表中
       messages.add(data);

@@ -6,12 +6,17 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_demo/env/Env.dart';
 import 'package:flutter_demo/pages/home/HomePage.dart';
 import 'package:flutter_demo/pages/home/LoginPage.dart';
+import 'package:flutter_demo/setup.dart';
+import 'package:flutter_demo/tools/database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
 
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  setupDataBases();
+
 
   realRunApp();
 

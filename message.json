@@ -1,0 +1,18 @@
+{
+  "type": "message",
+  "sender": {
+    "avatarUrl":"https://xxxxx",
+    "nickname": "xxxxx",
+    "account": "020301700164"
+  },
+  "receiver": {
+    "account": "351244716"
+  },
+  "message": {
+    "type": "text",
+    "messageInfo": {
+      "text": "xxxxx"
+    }
+  },
+  "timestamp": 1588888888888
+}

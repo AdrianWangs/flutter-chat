@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_demo/env/Env.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:flutter_demo/tools/database.dart';
+
 
 class ChatPage extends StatefulWidget {
 
@@ -28,6 +31,9 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
 
+  final _database = ChatDatabase();
+
+
   // 定义私有变量
   late String _account;
   late String _nickname;
@@ -48,6 +54,25 @@ class _ChatPageState extends State<ChatPage> {
     _avatarUrl = widget.avatarUrl;
 
     init();
+
+
+    //查询数据库中的聊天记录
+    _database.select(_database.chatData)
+        ..where((tbl)=>tbl.account.equals(_account))
+        ..get()
+        .then((value) {
+      value.forEach((element) {
+        //将聊天记录添加到消息列表中
+        setState(() {
+          messages.add({
+            "avatarUrl": element.avatarUrl,
+            "nickname": element.nickname,
+            "text": element.message,
+            "timestamp": element.messageTime,
+          });
+        });
+      });
+    });
 
   }
 
@@ -92,15 +117,82 @@ class _ChatPageState extends State<ChatPage> {
     //将消息转换为Map
     Map<String, dynamic> messageMap = jsonDecode(message);
 
-    //提取data
-    Map<String,dynamic> data = messageMap["data"];
+    //数据格式
+    // {
+    //     "type": "message",
+    //     "sender": {
+    //        "avatarUrl":"https://xxxxx",
+    //        "nickname": "xxxxx",
+    //        "account": "020301700164"
+    //      },
+    //     "receiver": {
+    //        "account": "351244716"
+    //     },
+    //     "message": {
+    //        "type": "text",
+    //        "messageInfo": {
+    //           "text": "xxxxx"
+    //        }
+    //      },
+    //     "timestamp": 1588888888888
+    // }
+
+    //数据表格式
+    //CREATE TABLE `chat_data` (
+    //  `id` int(11) NOT NULL AUTO_INCREMENT,
+    //  `avatar_url` varchar(255) DEFAULT NULL,
+    //  `nickname` varchar(255) DEFAULT NULL,
+    //  `message` varchar(255) DEFAULT NULL,
+    //  `message_time` varchar(255) DEFAULT NULL,
+    //  `account` varchar(255) DEFAULT NULL,
+    //)
+
+    //将数据插入到数据库中
+    //将信息添加到最近聊天数据库中
+    //先判断当前聊天是否已经存在
+    _database.select(_database.recentChat)..where((tbl) => tbl.account.equals(messageMap["sender"]["account"]))..get().then((value) {
+      //如果存在
+      if (value.isNotEmpty) {
+        //更新聊天记录
+        _database.update(_database.recentChat).replace(
+            RecentChatCompanion(
+                nickname: drift.Value(messageMap["sender"]["nickname"]),
+                avatarUrl: drift.Value(messageMap["sender"]["avatarUrl"]),
+                lastMessage: drift.Value(messageMap["message"].toString()),
+                lastMessageTime: drift.Value(messageMap["timestamp"].toString()),
+                account: drift.Value(messageMap["sender"]["account"])
+            )
+        );
+      } else {
+        //如果不存在
+        //将信息添加到数据库中
+        _database.into(_database.recentChat).insert(
+            RecentChatCompanion.insert(
+                nickname: messageMap["sender"]["nickname"],
+                avatarUrl: messageMap["sender"]["avatarUrl"],
+                lastMessage: messageMap["message"].toString(),
+                lastMessageTime: messageMap["timestamp"].toString(),
+                account: messageMap["sender"]["account"]
+            )
+        );
+      }
+    });
 
 
-    //TODO 将消息储存到本地数据库
+    //将信息添加到数据库中
+    _database.into(_database.chatData).insert(
+        ChatDataCompanion.insert(
+            nickname: messageMap["sender"]["nickname"],
+            avatarUrl: messageMap["sender"]["avatarUrl"],
+            message: messageMap["message"].toString(),
+            messageTime: messageMap["timestamp"].toString(),
+            account: messageMap["sender"]["account"]
+        )
+    );
 
     setState(() {
       //将消息添加到消息列表中
-      messages.add(data);
+      messages.add(messageMap);
     });
 
 
@@ -123,10 +215,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
-
-
-
-
   String message = '';
   final List<Map<String, dynamic>> messages = [];
 
@@ -142,6 +230,8 @@ class _ChatPageState extends State<ChatPage> {
     if (message.isNotEmpty) {
       //清空输入框
       FocusScope.of(context).requestFocus(FocusNode());
+
+      print(DateTime.now());
 
       sendData({
         'type': 'text',

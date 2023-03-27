@@ -7,12 +7,12 @@ import 'package:path_provider/path_provider.dart';
 
 part 'database.g.dart';
 
-const _encrypted = true;
+const _encrypted = false;
 const _password = '123456';
 
 
 class RecentChat extends Table {
-  IntColumn get id => integer()();
+  IntColumn get id => integer().autoIncrement()();
   TextColumn get nickname => text()();
   TextColumn get avatarUrl => text()();
   TextColumn get lastMessage => text()();
@@ -26,8 +26,8 @@ class ChatData extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get nickname => text()();
   TextColumn get avatarUrl => text()();
-  TextColumn get lastMessage => text()();
-  TextColumn get lastMessageTime => text()();
+  TextColumn get message => text()();
+  TextColumn get messageTime => text()();
   TextColumn get account => text()();
 }
 

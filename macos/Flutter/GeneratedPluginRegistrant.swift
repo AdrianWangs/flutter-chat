@@ -7,7 +7,7 @@ import Foundation
 
 import desktop_drop
 import path_provider_foundation
-import shared_preferences_macos
+import shared_preferences_foundation
 import sqlcipher_flutter_libs
 import sqlite3_flutter_libs
 

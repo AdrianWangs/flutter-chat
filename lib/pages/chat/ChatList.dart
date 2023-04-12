@@ -44,11 +44,14 @@ class ChatListModel with ChangeNotifier {
   List<Chat> get chats => _chats.values.toList();
 
   void addChat(Chat chat) {
+    print("============AddChat=============");
+    print(chat);
+    print("================================");
+
     _chats[chat.account] = chat;
     notifyListeners();
   }
 }
-
 
 class ChatList extends StatefulWidget {
   @override
@@ -57,7 +60,6 @@ class ChatList extends StatefulWidget {
 
 // 实现好友列表的展示
 class _ChatListState extends State<ChatList> {
-
   late BuildContext copyContext;
 
   late IOWebSocketChannel channel;
@@ -72,12 +74,16 @@ class _ChatListState extends State<ChatList> {
     //查询数据库中的聊天记录
     _database.select(_database.recentChat).get().then((value) {
       value.forEach((element) {
+        print("------------ChatList-------------");
+        print(element);
+        print("---------------------------------");
+
         //将聊天记录添加到好友列表中
         Provider.of<ChatListModel>(copyContext, listen: false).addChat(Chat(
           nickname: element.nickname,
           avatarUrl: element.avatarUrl,
           lastMessage: element.lastMessage,
-          lastMessageTime: element.lastMessageTime,
+          lastMessageTime: element.lastMessageTime.toString(),
           account: element.account,
         ));
       });
@@ -86,7 +92,6 @@ class _ChatListState extends State<ChatList> {
 
   /// 初始化websocket
   void initWebSocket() async {
-
     //获取数据库中的的用户信息
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userInfo = prefs.getString('userInfo');
@@ -96,7 +101,8 @@ class _ChatListState extends State<ChatList> {
 
     Map<String, dynamic> user = jsonDecode(userInfo);
 
-    channel = IOWebSocketChannel.connect('${Env.SOCKET_HOST}/websocket/${user['id']}');
+    channel = IOWebSocketChannel.connect(
+        '${Env.SOCKET_HOST}/websocket/${user['id']}');
 
     //监听服务端的消息
     channel.stream.listen(
@@ -106,8 +112,6 @@ class _ChatListState extends State<ChatList> {
 
   //收到新消息后的处理事件
   void receiveNewMessage(message) {
-
-
     //将字符串转换为json格式
 
     //将消息转换为json格式
@@ -119,75 +123,68 @@ class _ChatListState extends State<ChatList> {
       return;
     }
 
-
     //如果是好友列表消息
     if (decodedMessage["type"] == 'message') {
-
       //将信息添加到最近聊天数据库中
       //先判断当前聊天是否已经存在
-      _database.select(_database.recentChat)..where((tbl) => tbl.account.equals(decodedMessage['sender']["account"]))..get().then((value) {
-        //如果存在
-        if (value.isNotEmpty) {
-          //更新聊天记录
-          _database.update(_database.recentChat).replace(
-              RecentChatCompanion(
-                  nickname: Value(decodedMessage["sender"]['nickname']),
-                  avatarUrl: Value(decodedMessage["sender"]['avatarUrl']),
-                  lastMessage: Value(decodedMessage['message'].toString()),
-                  lastMessageTime: Value(decodedMessage["timestamp"].toString()),
-                  account: Value(decodedMessage["sender"]['account'])
-              )
-          );
-        } else {
-          //如果不存在
-          //将信息添加到数据库中
-          _database.into(_database.recentChat).insert(
-              RecentChatCompanion.insert(
-                  nickname: decodedMessage["sender"]['nickname'],
-                  avatarUrl: decodedMessage["sender"]['avatarUrl'],
-                  lastMessage: decodedMessage['message'].toString(),
-                  lastMessageTime: decodedMessage["timestamp"].toString(),
-                  account: decodedMessage["sender"]['account']
-              )
-          );
-        }
-      });
+      _database.select(_database.recentChat)
+        ..where(
+            (tbl) => tbl.account.equals(decodedMessage['sender']["account"]))
+        ..get().then((value) {
+          //如果存在
+          if (value.isNotEmpty) {
+            //更新聊天记录
+            _database.update(_database.recentChat).replace(RecentChatCompanion(
+                nickname: Value(decodedMessage["sender"]['nickname']),
+                avatarUrl: Value(decodedMessage["sender"]['avatarUrl']),
+                lastMessage: Value(decodedMessage['message'].toString()),
+                lastMessageTime: Value(decodedMessage["timestamp"]),
+                senderAccount: Value(decodedMessage["sender"]['account']),
+                receiverAccount: Value(decodedMessage["receiver"]['account']),
+                account: Value(decodedMessage["receiver"]['account'])));
+          } else {
+            //如果不存在
+            //将信息添加到数据库中
+            _database.into(_database.recentChat).insert(
+                RecentChatCompanion.insert(
+                    nickname: decodedMessage["sender"]['nickname'],
+                    avatarUrl: decodedMessage["sender"]['avatarUrl'],
+                    lastMessage: decodedMessage['message'].toString(),
+                    lastMessageTime: decodedMessage["timestamp"],
+                    senderAccount: decodedMessage["sender"]['account'],
+                    receiverAccount: decodedMessage["receiver"]['account'],
+                    account: decodedMessage["receiver"]['account']));
+          }
+        });
 
       //TODO 消息标红
 
       //将信息添加到数据库中
-      _database.into(_database.chatData).insert(
-          ChatDataCompanion.insert(
-              nickname: decodedMessage["sender"]['nickname'],
-              avatarUrl: decodedMessage["sender"]['avatarUrl'],
-              message: decodedMessage['message'].toString(),
-              messageTime: decodedMessage["timestamp"].toString(),
-              account: decodedMessage["sender"]['account']
-          )
-      );
+      _database.into(_database.chatData).insert(ChatDataCompanion.insert(
+          nickname: decodedMessage["sender"]['nickname'],
+          avatarUrl: decodedMessage["sender"]['avatarUrl'],
+          message: decodedMessage['message'].toString(),
+          messageTime: decodedMessage["timestamp"],
+          senderAccount: decodedMessage["sender"]['account'],
+          receiverAccount: decodedMessage["receiver"]['account'],
+          ));
 
       //将消息添加到好友列表中
       addMessageList(decodedMessage);
-
     }
   }
 
   void addMessageList(Map<String, dynamic> chatList) {
-
     print(chatList);
 
     //将字符串转化为数字
 
     Chat chat = Chat(
-      nickname: chatList['sender']['nickname'],
-      avatarUrl: chatList['sender']['avatarUrl'],
-      lastMessage: chatList['message'].toString(),
-      lastMessageTime: chatList['timestamp'].toString(),
-      account: chatList['sender']['account']
-    );
-
-
-
+        nickname: chatList['sender']['nickname'],
+        avatarUrl: chatList['sender']['avatarUrl'],
+        lastMessage: chatList['message'].toString(),
+        lastMessageTime: chatList['timestamp'].toString(),
+        account: chatList['sender']['account']);
 
     //将好友添加到好友列表中
     Provider.of<ChatListModel>(copyContext, listen: false).addChat(chat);
@@ -207,30 +204,40 @@ class _ChatListState extends State<ChatList> {
           copyContext = context;
           return Scaffold(
               body: ListView.builder(
-                itemCount: friendListModel.chats.length,
-                itemBuilder: (context, index) {
-                  final friend = friendListModel.chats[index];
+            itemCount: friendListModel.chats.length,
+            itemBuilder: (context, index) {
+              Chat friend = friendListModel.chats.elementAt(index);
 
-                  return InkWell(
-                    onTap: () {
-                      //跳转到聊天页面
-                      Navigator.push(this.context,
-                          MaterialPageRoute(builder: (context) {
-                            return ChatPage(account: friend.account,nickname: friend.nickname,avatarUrl: friend.avatarUrl);
-                          }
-                      ));
-                    },
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: NetworkImage(
-                          friend.avatarUrl,
-                        ),
-                      ),
-                      //点击好友头像，跳转到聊天页面
-                      title: Text(friend.nickname),
-                      subtitle: Text(friend.lastMessage),
-                      trailing: Text(DateTime.fromMillisecondsSinceEpoch(int.parse(friend.lastMessageTime)).toString(),
-                      style: const TextStyle(color: Colors.grey, fontSize: 14.0)),
+              return InkWell(
+                onTap: () {
+                  print("============ThisFriend=============");
+                  print(friend);
+                  print("===================================");
+
+                  //跳转到聊天页面
+                  Navigator.push(this.context,
+                      MaterialPageRoute(builder: (context) {
+                    return ChatPage(
+                        account: friend.account,
+                        nickname: friend.nickname,
+                        avatarUrl: friend.avatarUrl);
+                  }));
+                },
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(
+                      friend.avatarUrl,
+                    ),
+                  ),
+                  //点击好友头像，跳转到聊天页面
+                  title: Text(friend.nickname),
+                  subtitle: Text(friend.lastMessage),
+                  trailing: Text(
+                      DateTime.fromMillisecondsSinceEpoch(
+                              int.parse(friend.lastMessageTime))
+                          .toString(),
+                      style:
+                          const TextStyle(color: Colors.grey, fontSize: 14.0)),
                 ),
               );
             },

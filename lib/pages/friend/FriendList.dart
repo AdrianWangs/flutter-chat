@@ -131,9 +131,7 @@ class FriendList extends StatelessWidget{
     // "friendSex": 0,
     // "addTime": "2022-12-31 21:40:21"}]
     //将返回的数据转换为List<Map<String, dynamic>>
-    List<Map<String, dynamic>> friendList = (response.data as List).cast();
-    //将List<Map<String, dynamic>>转换为List<Friend>
-
+    List friendList = response.data;
 
     prefs.setString('friendList', jsonEncode(friendList));
 
@@ -143,8 +141,6 @@ class FriendList extends StatelessWidget{
       avatarUrl: e['friendAvatarUrl'],
       isOnline: true,
     )).toList();
-
-
 
     //将好友列表添加到FriendListModel中
     Provider.of<FriendListModel>(context, listen: false).addAll(friends);

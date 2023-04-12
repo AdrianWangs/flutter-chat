@@ -77,6 +77,9 @@ class _LoginPageState extends State<LoginPage> {
 
     final loginUrl = Env.HOST + '/user/${username}/${password}';
 
+
+    print("loginUrl: $loginUrl");
+
     final response = await Dio().get(loginUrl);
 
     print(response.data);

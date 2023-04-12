@@ -16,7 +16,9 @@ class RecentChat extends Table {
   TextColumn get nickname => text()();
   TextColumn get avatarUrl => text()();
   TextColumn get lastMessage => text()();
-  TextColumn get lastMessageTime => text()();
+  IntColumn get lastMessageTime => integer()();
+  TextColumn get senderAccount => text()();
+  TextColumn get receiverAccount => text()();
   TextColumn get account => text()();
 }
 
@@ -27,8 +29,9 @@ class ChatData extends Table {
   TextColumn get nickname => text()();
   TextColumn get avatarUrl => text()();
   TextColumn get message => text()();
-  TextColumn get messageTime => text()();
-  TextColumn get account => text()();
+  IntColumn get messageTime => integer()();
+  TextColumn get senderAccount => text()();
+  TextColumn get receiverAccount => text()();
 }
 
 

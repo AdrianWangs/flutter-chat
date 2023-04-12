@@ -39,18 +39,31 @@ class $ChatDataTable extends ChatData
   static const VerificationMeta _messageTimeMeta =
       const VerificationMeta('messageTime');
   @override
-  late final GeneratedColumn<String> messageTime = GeneratedColumn<String>(
+  late final GeneratedColumn<int> messageTime = GeneratedColumn<int>(
       'message_time', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _accountMeta =
-      const VerificationMeta('account');
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _senderAccountMeta =
+      const VerificationMeta('senderAccount');
   @override
-  late final GeneratedColumn<String> account = GeneratedColumn<String>(
-      'account', aliasedName, false,
+  late final GeneratedColumn<String> senderAccount = GeneratedColumn<String>(
+      'sender_account', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _receiverAccountMeta =
+      const VerificationMeta('receiverAccount');
+  @override
+  late final GeneratedColumn<String> receiverAccount = GeneratedColumn<String>(
+      'receiver_account', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, nickname, avatarUrl, message, messageTime, account];
+  List<GeneratedColumn> get $columns => [
+        id,
+        nickname,
+        avatarUrl,
+        message,
+        messageTime,
+        senderAccount,
+        receiverAccount
+      ];
   @override
   String get aliasedName => _alias ?? 'chat_data';
   @override
@@ -89,11 +102,21 @@ class $ChatDataTable extends ChatData
     } else if (isInserting) {
       context.missing(_messageTimeMeta);
     }
-    if (data.containsKey('account')) {
-      context.handle(_accountMeta,
-          account.isAcceptableOrUnknown(data['account']!, _accountMeta));
+    if (data.containsKey('sender_account')) {
+      context.handle(
+          _senderAccountMeta,
+          senderAccount.isAcceptableOrUnknown(
+              data['sender_account']!, _senderAccountMeta));
     } else if (isInserting) {
-      context.missing(_accountMeta);
+      context.missing(_senderAccountMeta);
+    }
+    if (data.containsKey('receiver_account')) {
+      context.handle(
+          _receiverAccountMeta,
+          receiverAccount.isAcceptableOrUnknown(
+              data['receiver_account']!, _receiverAccountMeta));
+    } else if (isInserting) {
+      context.missing(_receiverAccountMeta);
     }
     return context;
   }
@@ -113,9 +136,11 @@ class $ChatDataTable extends ChatData
       message: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}message'])!,
       messageTime: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}message_time'])!,
-      account: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}account'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}message_time'])!,
+      senderAccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sender_account'])!,
+      receiverAccount: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}receiver_account'])!,
     );
   }
 
@@ -130,15 +155,17 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
   final String nickname;
   final String avatarUrl;
   final String message;
-  final String messageTime;
-  final String account;
+  final int messageTime;
+  final String senderAccount;
+  final String receiverAccount;
   const ChatDataData(
       {required this.id,
       required this.nickname,
       required this.avatarUrl,
       required this.message,
       required this.messageTime,
-      required this.account});
+      required this.senderAccount,
+      required this.receiverAccount});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -146,8 +173,9 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
     map['nickname'] = Variable<String>(nickname);
     map['avatar_url'] = Variable<String>(avatarUrl);
     map['message'] = Variable<String>(message);
-    map['message_time'] = Variable<String>(messageTime);
-    map['account'] = Variable<String>(account);
+    map['message_time'] = Variable<int>(messageTime);
+    map['sender_account'] = Variable<String>(senderAccount);
+    map['receiver_account'] = Variable<String>(receiverAccount);
     return map;
   }
 
@@ -158,7 +186,8 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
       avatarUrl: Value(avatarUrl),
       message: Value(message),
       messageTime: Value(messageTime),
-      account: Value(account),
+      senderAccount: Value(senderAccount),
+      receiverAccount: Value(receiverAccount),
     );
   }
 
@@ -170,8 +199,9 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
       nickname: serializer.fromJson<String>(json['nickname']),
       avatarUrl: serializer.fromJson<String>(json['avatarUrl']),
       message: serializer.fromJson<String>(json['message']),
-      messageTime: serializer.fromJson<String>(json['messageTime']),
-      account: serializer.fromJson<String>(json['account']),
+      messageTime: serializer.fromJson<int>(json['messageTime']),
+      senderAccount: serializer.fromJson<String>(json['senderAccount']),
+      receiverAccount: serializer.fromJson<String>(json['receiverAccount']),
     );
   }
   @override
@@ -182,8 +212,9 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
       'nickname': serializer.toJson<String>(nickname),
       'avatarUrl': serializer.toJson<String>(avatarUrl),
       'message': serializer.toJson<String>(message),
-      'messageTime': serializer.toJson<String>(messageTime),
-      'account': serializer.toJson<String>(account),
+      'messageTime': serializer.toJson<int>(messageTime),
+      'senderAccount': serializer.toJson<String>(senderAccount),
+      'receiverAccount': serializer.toJson<String>(receiverAccount),
     };
   }
 
@@ -192,15 +223,17 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
           String? nickname,
           String? avatarUrl,
           String? message,
-          String? messageTime,
-          String? account}) =>
+          int? messageTime,
+          String? senderAccount,
+          String? receiverAccount}) =>
       ChatDataData(
         id: id ?? this.id,
         nickname: nickname ?? this.nickname,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         message: message ?? this.message,
         messageTime: messageTime ?? this.messageTime,
-        account: account ?? this.account,
+        senderAccount: senderAccount ?? this.senderAccount,
+        receiverAccount: receiverAccount ?? this.receiverAccount,
       );
   @override
   String toString() {
@@ -210,14 +243,15 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
           ..write('avatarUrl: $avatarUrl, ')
           ..write('message: $message, ')
           ..write('messageTime: $messageTime, ')
-          ..write('account: $account')
+          ..write('senderAccount: $senderAccount, ')
+          ..write('receiverAccount: $receiverAccount')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, nickname, avatarUrl, message, messageTime, account);
+  int get hashCode => Object.hash(id, nickname, avatarUrl, message, messageTime,
+      senderAccount, receiverAccount);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -227,7 +261,8 @@ class ChatDataData extends DataClass implements Insertable<ChatDataData> {
           other.avatarUrl == this.avatarUrl &&
           other.message == this.message &&
           other.messageTime == this.messageTime &&
-          other.account == this.account);
+          other.senderAccount == this.senderAccount &&
+          other.receiverAccount == this.receiverAccount);
 }
 
 class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
@@ -235,35 +270,40 @@ class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
   final Value<String> nickname;
   final Value<String> avatarUrl;
   final Value<String> message;
-  final Value<String> messageTime;
-  final Value<String> account;
+  final Value<int> messageTime;
+  final Value<String> senderAccount;
+  final Value<String> receiverAccount;
   const ChatDataCompanion({
     this.id = const Value.absent(),
     this.nickname = const Value.absent(),
     this.avatarUrl = const Value.absent(),
     this.message = const Value.absent(),
     this.messageTime = const Value.absent(),
-    this.account = const Value.absent(),
+    this.senderAccount = const Value.absent(),
+    this.receiverAccount = const Value.absent(),
   });
   ChatDataCompanion.insert({
     this.id = const Value.absent(),
     required String nickname,
     required String avatarUrl,
     required String message,
-    required String messageTime,
-    required String account,
+    required int messageTime,
+    required String senderAccount,
+    required String receiverAccount,
   })  : nickname = Value(nickname),
         avatarUrl = Value(avatarUrl),
         message = Value(message),
         messageTime = Value(messageTime),
-        account = Value(account);
+        senderAccount = Value(senderAccount),
+        receiverAccount = Value(receiverAccount);
   static Insertable<ChatDataData> custom({
     Expression<int>? id,
     Expression<String>? nickname,
     Expression<String>? avatarUrl,
     Expression<String>? message,
-    Expression<String>? messageTime,
-    Expression<String>? account,
+    Expression<int>? messageTime,
+    Expression<String>? senderAccount,
+    Expression<String>? receiverAccount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -271,7 +311,8 @@ class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (message != null) 'message': message,
       if (messageTime != null) 'message_time': messageTime,
-      if (account != null) 'account': account,
+      if (senderAccount != null) 'sender_account': senderAccount,
+      if (receiverAccount != null) 'receiver_account': receiverAccount,
     });
   }
 
@@ -280,15 +321,17 @@ class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
       Value<String>? nickname,
       Value<String>? avatarUrl,
       Value<String>? message,
-      Value<String>? messageTime,
-      Value<String>? account}) {
+      Value<int>? messageTime,
+      Value<String>? senderAccount,
+      Value<String>? receiverAccount}) {
     return ChatDataCompanion(
       id: id ?? this.id,
       nickname: nickname ?? this.nickname,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       message: message ?? this.message,
       messageTime: messageTime ?? this.messageTime,
-      account: account ?? this.account,
+      senderAccount: senderAccount ?? this.senderAccount,
+      receiverAccount: receiverAccount ?? this.receiverAccount,
     );
   }
 
@@ -308,10 +351,13 @@ class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
       map['message'] = Variable<String>(message.value);
     }
     if (messageTime.present) {
-      map['message_time'] = Variable<String>(messageTime.value);
+      map['message_time'] = Variable<int>(messageTime.value);
     }
-    if (account.present) {
-      map['account'] = Variable<String>(account.value);
+    if (senderAccount.present) {
+      map['sender_account'] = Variable<String>(senderAccount.value);
+    }
+    if (receiverAccount.present) {
+      map['receiver_account'] = Variable<String>(receiverAccount.value);
     }
     return map;
   }
@@ -324,7 +370,8 @@ class ChatDataCompanion extends UpdateCompanion<ChatDataData> {
           ..write('avatarUrl: $avatarUrl, ')
           ..write('message: $message, ')
           ..write('messageTime: $messageTime, ')
-          ..write('account: $account')
+          ..write('senderAccount: $senderAccount, ')
+          ..write('receiverAccount: $receiverAccount')
           ..write(')'))
         .toString();
   }
@@ -366,8 +413,20 @@ class $RecentChatTable extends RecentChat
   static const VerificationMeta _lastMessageTimeMeta =
       const VerificationMeta('lastMessageTime');
   @override
-  late final GeneratedColumn<String> lastMessageTime = GeneratedColumn<String>(
+  late final GeneratedColumn<int> lastMessageTime = GeneratedColumn<int>(
       'last_message_time', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _senderAccountMeta =
+      const VerificationMeta('senderAccount');
+  @override
+  late final GeneratedColumn<String> senderAccount = GeneratedColumn<String>(
+      'sender_account', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _receiverAccountMeta =
+      const VerificationMeta('receiverAccount');
+  @override
+  late final GeneratedColumn<String> receiverAccount = GeneratedColumn<String>(
+      'receiver_account', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _accountMeta =
       const VerificationMeta('account');
@@ -376,8 +435,16 @@ class $RecentChatTable extends RecentChat
       'account', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, nickname, avatarUrl, lastMessage, lastMessageTime, account];
+  List<GeneratedColumn> get $columns => [
+        id,
+        nickname,
+        avatarUrl,
+        lastMessage,
+        lastMessageTime,
+        senderAccount,
+        receiverAccount,
+        account
+      ];
   @override
   String get aliasedName => _alias ?? 'recent_chat';
   @override
@@ -418,6 +485,22 @@ class $RecentChatTable extends RecentChat
     } else if (isInserting) {
       context.missing(_lastMessageTimeMeta);
     }
+    if (data.containsKey('sender_account')) {
+      context.handle(
+          _senderAccountMeta,
+          senderAccount.isAcceptableOrUnknown(
+              data['sender_account']!, _senderAccountMeta));
+    } else if (isInserting) {
+      context.missing(_senderAccountMeta);
+    }
+    if (data.containsKey('receiver_account')) {
+      context.handle(
+          _receiverAccountMeta,
+          receiverAccount.isAcceptableOrUnknown(
+              data['receiver_account']!, _receiverAccountMeta));
+    } else if (isInserting) {
+      context.missing(_receiverAccountMeta);
+    }
     if (data.containsKey('account')) {
       context.handle(_accountMeta,
           account.isAcceptableOrUnknown(data['account']!, _accountMeta));
@@ -441,8 +524,12 @@ class $RecentChatTable extends RecentChat
           .read(DriftSqlType.string, data['${effectivePrefix}avatar_url'])!,
       lastMessage: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}last_message'])!,
-      lastMessageTime: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}last_message_time'])!,
+      lastMessageTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_message_time'])!,
+      senderAccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sender_account'])!,
+      receiverAccount: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}receiver_account'])!,
       account: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}account'])!,
     );
@@ -459,7 +546,9 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
   final String nickname;
   final String avatarUrl;
   final String lastMessage;
-  final String lastMessageTime;
+  final int lastMessageTime;
+  final String senderAccount;
+  final String receiverAccount;
   final String account;
   const RecentChatData(
       {required this.id,
@@ -467,6 +556,8 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
       required this.avatarUrl,
       required this.lastMessage,
       required this.lastMessageTime,
+      required this.senderAccount,
+      required this.receiverAccount,
       required this.account});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -475,7 +566,9 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
     map['nickname'] = Variable<String>(nickname);
     map['avatar_url'] = Variable<String>(avatarUrl);
     map['last_message'] = Variable<String>(lastMessage);
-    map['last_message_time'] = Variable<String>(lastMessageTime);
+    map['last_message_time'] = Variable<int>(lastMessageTime);
+    map['sender_account'] = Variable<String>(senderAccount);
+    map['receiver_account'] = Variable<String>(receiverAccount);
     map['account'] = Variable<String>(account);
     return map;
   }
@@ -487,6 +580,8 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
       avatarUrl: Value(avatarUrl),
       lastMessage: Value(lastMessage),
       lastMessageTime: Value(lastMessageTime),
+      senderAccount: Value(senderAccount),
+      receiverAccount: Value(receiverAccount),
       account: Value(account),
     );
   }
@@ -499,7 +594,9 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
       nickname: serializer.fromJson<String>(json['nickname']),
       avatarUrl: serializer.fromJson<String>(json['avatarUrl']),
       lastMessage: serializer.fromJson<String>(json['lastMessage']),
-      lastMessageTime: serializer.fromJson<String>(json['lastMessageTime']),
+      lastMessageTime: serializer.fromJson<int>(json['lastMessageTime']),
+      senderAccount: serializer.fromJson<String>(json['senderAccount']),
+      receiverAccount: serializer.fromJson<String>(json['receiverAccount']),
       account: serializer.fromJson<String>(json['account']),
     );
   }
@@ -511,7 +608,9 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
       'nickname': serializer.toJson<String>(nickname),
       'avatarUrl': serializer.toJson<String>(avatarUrl),
       'lastMessage': serializer.toJson<String>(lastMessage),
-      'lastMessageTime': serializer.toJson<String>(lastMessageTime),
+      'lastMessageTime': serializer.toJson<int>(lastMessageTime),
+      'senderAccount': serializer.toJson<String>(senderAccount),
+      'receiverAccount': serializer.toJson<String>(receiverAccount),
       'account': serializer.toJson<String>(account),
     };
   }
@@ -521,7 +620,9 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
           String? nickname,
           String? avatarUrl,
           String? lastMessage,
-          String? lastMessageTime,
+          int? lastMessageTime,
+          String? senderAccount,
+          String? receiverAccount,
           String? account}) =>
       RecentChatData(
         id: id ?? this.id,
@@ -529,6 +630,8 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
         avatarUrl: avatarUrl ?? this.avatarUrl,
         lastMessage: lastMessage ?? this.lastMessage,
         lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+        senderAccount: senderAccount ?? this.senderAccount,
+        receiverAccount: receiverAccount ?? this.receiverAccount,
         account: account ?? this.account,
       );
   @override
@@ -539,14 +642,16 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
           ..write('avatarUrl: $avatarUrl, ')
           ..write('lastMessage: $lastMessage, ')
           ..write('lastMessageTime: $lastMessageTime, ')
+          ..write('senderAccount: $senderAccount, ')
+          ..write('receiverAccount: $receiverAccount, ')
           ..write('account: $account')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, nickname, avatarUrl, lastMessage, lastMessageTime, account);
+  int get hashCode => Object.hash(id, nickname, avatarUrl, lastMessage,
+      lastMessageTime, senderAccount, receiverAccount, account);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -556,6 +661,8 @@ class RecentChatData extends DataClass implements Insertable<RecentChatData> {
           other.avatarUrl == this.avatarUrl &&
           other.lastMessage == this.lastMessage &&
           other.lastMessageTime == this.lastMessageTime &&
+          other.senderAccount == this.senderAccount &&
+          other.receiverAccount == this.receiverAccount &&
           other.account == this.account);
 }
 
@@ -564,7 +671,9 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
   final Value<String> nickname;
   final Value<String> avatarUrl;
   final Value<String> lastMessage;
-  final Value<String> lastMessageTime;
+  final Value<int> lastMessageTime;
+  final Value<String> senderAccount;
+  final Value<String> receiverAccount;
   final Value<String> account;
   const RecentChatCompanion({
     this.id = const Value.absent(),
@@ -572,6 +681,8 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
     this.avatarUrl = const Value.absent(),
     this.lastMessage = const Value.absent(),
     this.lastMessageTime = const Value.absent(),
+    this.senderAccount = const Value.absent(),
+    this.receiverAccount = const Value.absent(),
     this.account = const Value.absent(),
   });
   RecentChatCompanion.insert({
@@ -579,19 +690,25 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
     required String nickname,
     required String avatarUrl,
     required String lastMessage,
-    required String lastMessageTime,
+    required int lastMessageTime,
+    required String senderAccount,
+    required String receiverAccount,
     required String account,
   })  : nickname = Value(nickname),
         avatarUrl = Value(avatarUrl),
         lastMessage = Value(lastMessage),
         lastMessageTime = Value(lastMessageTime),
+        senderAccount = Value(senderAccount),
+        receiverAccount = Value(receiverAccount),
         account = Value(account);
   static Insertable<RecentChatData> custom({
     Expression<int>? id,
     Expression<String>? nickname,
     Expression<String>? avatarUrl,
     Expression<String>? lastMessage,
-    Expression<String>? lastMessageTime,
+    Expression<int>? lastMessageTime,
+    Expression<String>? senderAccount,
+    Expression<String>? receiverAccount,
     Expression<String>? account,
   }) {
     return RawValuesInsertable({
@@ -600,6 +717,8 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (lastMessage != null) 'last_message': lastMessage,
       if (lastMessageTime != null) 'last_message_time': lastMessageTime,
+      if (senderAccount != null) 'sender_account': senderAccount,
+      if (receiverAccount != null) 'receiver_account': receiverAccount,
       if (account != null) 'account': account,
     });
   }
@@ -609,7 +728,9 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
       Value<String>? nickname,
       Value<String>? avatarUrl,
       Value<String>? lastMessage,
-      Value<String>? lastMessageTime,
+      Value<int>? lastMessageTime,
+      Value<String>? senderAccount,
+      Value<String>? receiverAccount,
       Value<String>? account}) {
     return RecentChatCompanion(
       id: id ?? this.id,
@@ -617,6 +738,8 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       lastMessage: lastMessage ?? this.lastMessage,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      senderAccount: senderAccount ?? this.senderAccount,
+      receiverAccount: receiverAccount ?? this.receiverAccount,
       account: account ?? this.account,
     );
   }
@@ -637,7 +760,13 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
       map['last_message'] = Variable<String>(lastMessage.value);
     }
     if (lastMessageTime.present) {
-      map['last_message_time'] = Variable<String>(lastMessageTime.value);
+      map['last_message_time'] = Variable<int>(lastMessageTime.value);
+    }
+    if (senderAccount.present) {
+      map['sender_account'] = Variable<String>(senderAccount.value);
+    }
+    if (receiverAccount.present) {
+      map['receiver_account'] = Variable<String>(receiverAccount.value);
     }
     if (account.present) {
       map['account'] = Variable<String>(account.value);
@@ -653,6 +782,8 @@ class RecentChatCompanion extends UpdateCompanion<RecentChatData> {
           ..write('avatarUrl: $avatarUrl, ')
           ..write('lastMessage: $lastMessage, ')
           ..write('lastMessageTime: $lastMessageTime, ')
+          ..write('senderAccount: $senderAccount, ')
+          ..write('receiverAccount: $receiverAccount, ')
           ..write('account: $account')
           ..write(')'))
         .toString();

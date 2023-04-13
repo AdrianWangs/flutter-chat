@@ -47,7 +47,6 @@ class ChatListModel with ChangeNotifier {
     print("============AddChat=============");
     print(chat);
     print("================================");
-
     _chats[chat.account] = chat;
     notifyListeners();
   }
@@ -131,13 +130,23 @@ class _ChatListState extends State<ChatList> {
         ..where(
             (tbl) => tbl.account.equals(decodedMessage['sender']["account"]))
         ..get().then((value) {
+
+
+          //要显示的信息
+          var displayMessage = "";
+          switch(decodedMessage["message"]["type"]){
+            case "text":
+              displayMessage = decodedMessage["message"]["messageInfo"]["text"];
+              break;
+          }
+
           //如果存在
           if (value.isNotEmpty) {
             //更新聊天记录
             _database.update(_database.recentChat).replace(RecentChatCompanion(
                 nickname: Value(decodedMessage["sender"]['nickname']),
                 avatarUrl: Value(decodedMessage["sender"]['avatarUrl']),
-                lastMessage: Value(decodedMessage['message'].toString()),
+                lastMessage: Value(displayMessage),
                 lastMessageTime: Value(decodedMessage["timestamp"]),
                 senderAccount: Value(decodedMessage["sender"]['account']),
                 receiverAccount: Value(decodedMessage["receiver"]['account']),
@@ -149,7 +158,7 @@ class _ChatListState extends State<ChatList> {
                 RecentChatCompanion.insert(
                     nickname: decodedMessage["sender"]['nickname'],
                     avatarUrl: decodedMessage["sender"]['avatarUrl'],
-                    lastMessage: decodedMessage['message'].toString(),
+                    lastMessage: displayMessage,
                     lastMessageTime: decodedMessage["timestamp"],
                     senderAccount: decodedMessage["sender"]['account'],
                     receiverAccount: decodedMessage["receiver"]['account'],
@@ -163,7 +172,7 @@ class _ChatListState extends State<ChatList> {
       _database.into(_database.chatData).insert(ChatDataCompanion.insert(
           nickname: decodedMessage["sender"]['nickname'],
           avatarUrl: decodedMessage["sender"]['avatarUrl'],
-          message: decodedMessage['message'].toString(),
+          message: jsonEncode(decodedMessage['message']),
           messageTime: decodedMessage["timestamp"],
           senderAccount: decodedMessage["sender"]['account'],
           receiverAccount: decodedMessage["receiver"]['account'],
@@ -177,12 +186,21 @@ class _ChatListState extends State<ChatList> {
   void addMessageList(Map<String, dynamic> chatList) {
     print(chatList);
 
+
+    //要显示的信息
+    var displayMessage = "";
+    switch(chatList["message"]["type"]){
+      case "text":
+        displayMessage = chatList["message"]["messageInfo"]["text"];
+        break;
+    }
+
     //将字符串转化为数字
 
     Chat chat = Chat(
         nickname: chatList['sender']['nickname'],
         avatarUrl: chatList['sender']['avatarUrl'],
-        lastMessage: chatList['message'].toString(),
+        lastMessage: displayMessage,
         lastMessageTime: chatList['timestamp'].toString(),
         account: chatList['sender']['account']);
 

@@ -84,6 +84,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
+
+
   ///从本地数据库中获取聊天记录
   void getDataFromDatabase(){
     //查询数据库中的聊天记录
@@ -99,6 +101,13 @@ class _ChatPageState extends State<ChatPage> {
       )
       ..get().then((value) {
         value.forEach((element) {
+
+
+          print("=============从数据库中获取到的聊天记录==========");
+          print(element);
+
+
+
           //将聊天记录添加到消息列表中
           setState(() {
             messages.add({
@@ -174,23 +183,40 @@ class _ChatPageState extends State<ChatPage> {
     //  `account` varchar(255) DEFAULT NULL,
     //)
 
+
+
+
+
+
+
     //将数据插入到数据库中
     //将信息添加到最近聊天数据库中
     //先判断当前聊天是否已经存在
     _database.select(_database.recentChat)
       ..where((tbl) => tbl.account.equals(messageMap["sender"]["account"]) )
       ..get().then((value) {
+
+        //要显示的信息
+        var displayMessage = "";
+        switch(messageMap["message"]["type"]){
+          case "text":
+            displayMessage = message["message"]["messageInfo"]["text"];
+            break;
+        }
+
+
         //如果存在
         if (value.isNotEmpty) {
           //更新聊天记录
           _database.update(_database.recentChat).replace(RecentChatCompanion(
+              id: drift.Value(value[0].id),
               nickname: drift.Value(messageMap["sender"]["nickname"]),
               avatarUrl: drift.Value(messageMap["sender"]["avatarUrl"]),
-              lastMessage: drift.Value(messageMap["message"].toString()),
+              lastMessage: drift.Value(displayMessage),
               lastMessageTime: drift.Value(messageMap["timestamp"]),
-              senderAccount: drift.Value(messageMap["sender"]["account"]),
-              receiverAccount: drift.Value(messageMap["receiver"]["account"]),
-              account: drift.Value(messageMap["receiver"]["account"])
+              senderAccount: drift.Value(value[0].senderAccount),
+              receiverAccount: drift.Value(value[0].receiverAccount),
+              account: drift.Value(value[0].account)
               ));
         } else {
           //如果不存在
@@ -199,7 +225,7 @@ class _ChatPageState extends State<ChatPage> {
               RecentChatCompanion.insert(
                   nickname: messageMap["sender"]["nickname"],
                   avatarUrl: messageMap["sender"]["avatarUrl"],
-                  lastMessage: messageMap["message"].toString(),
+                  lastMessage: displayMessage,
                   lastMessageTime: messageMap["timestamp"],
                   senderAccount: messageMap["sender"]["account"],
                   receiverAccount: messageMap["receiver"]["account"],
@@ -211,10 +237,13 @@ class _ChatPageState extends State<ChatPage> {
     _database.into(_database.chatData).insert(ChatDataCompanion.insert(
         nickname: messageMap["sender"]["nickname"],
         avatarUrl: messageMap["sender"]["avatarUrl"],
-        message: messageMap["message"].toString(),
+        message: jsonEncode(messageMap["message"]),
         messageTime: messageMap["timestamp"],
         senderAccount: messageMap["sender"]["account"],
-        receiverAccount: messageMap["receiver"]["account"]));
+        receiverAccount: messageMap["receiver"]["account"])
+    );
+
+
     setState(() {
       //将消息添加到消息列表中
       messages.add(jsonDecode(message));
@@ -382,9 +411,6 @@ class _ChatPageState extends State<ChatPage> {
         ..where((tbl) => tbl.account.equals(data["receiver"]["account"]))
         ..get().then((value) {
 
-
-
-
           //要显示的信息
           var displayMessage = "";
           switch(data["message"]["type"]){
@@ -435,15 +461,6 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     setState(() {
-      // messages.add({
-      //   "avatarUrl": data['sender']['avatarUrl'],
-      //   "nickname": data['sender']['nickname'],
-      //   "text": jsonEncode(data['message']),
-      //   "timestamp": data['timestamp'],
-      //   "account": data['sender']['account'],
-      // });
-
-      print("发送的消息：$data");
 
       messages.add(data);
 
@@ -452,10 +469,6 @@ class _ChatPageState extends State<ChatPage> {
       messages.sort((a, b) {
         return a['timestamp'].compareTo(b['timestamp']);
       });
-
-
-
-
 
       _controller.clear();
     });
@@ -529,19 +542,15 @@ class _ChatPageState extends State<ChatPage> {
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
 
-
                   final message = messages[index];
 
                   final type = message["message"]['type'];
-                  final isMe = message["receiver"]['account'] == _myAccount;
-
-
+                  final isMe = message["sender"]['account'] == _myAccount;
 
                   print("以下为渲染过程获取的数据：");
                   print("type: $message");
                   print("myAccount: $_myAccount");
                   print("--------------------");
-
                   final avatarUrl = message["sender"]['avatarUrl'];
                   final nickname = message["sender"]['nickname'];
                   final timestamp = message['timestamp'];
@@ -571,6 +580,11 @@ class _ChatPageState extends State<ChatPage> {
 
                     title: LayoutBuilder(
                       builder: (context, constraints) {
+
+                        print("开始构建消息气泡");
+
+
+
                         //这边开始是消息气泡
                         final textPainter = TextPainter(
                           text: TextSpan(
@@ -584,7 +598,6 @@ class _ChatPageState extends State<ChatPage> {
                         var maxWidth = textPainter.width + 40;
 
                         Widget title;
-                        //这边开始是消息气泡
                         if (type == 'image') { //如果发来的是图片
                           String imageUrl = message['imageUrl'];
                           if (imageUrl.split(":").first != "http" ||
@@ -656,12 +669,18 @@ class _ChatPageState extends State<ChatPage> {
                           //   fit: BoxFit.cover,
                           // );
                         } else {
+
+                          print("------开始构建文本消息------");
+
                           title = Text(
                             text,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             textAlign: isMe ? TextAlign.right : TextAlign.left,
                           );
+
+                          print("------文本消息构建完成------");
+
                         }
 
                         return Align(

@@ -1,5 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_demo/common/WebSocketManager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../common/Global.dart';
+import '../../env/Env.dart';
 import '../chat/ChatList.dart';
 import '../friend/FriendList.dart';
 
@@ -29,6 +35,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
     _title = widget.title;
 
+    initData();
+
+  }
+
+  void initData() async {
+    Global.prefs ??= await SharedPreferences.getInstance();
+
+    String? userInfo = Global.prefs?.getString('userInfo');
+    if (userInfo == null) {
+      return;
+    }
+
+    Global.user = jsonDecode(userInfo);
+
+    connectWebSocket();
+
+  }
+  void connectWebSocket() async {
+    WebSocketManager.connect('${Env.SOCKET_HOST}/websocket/${Global.user['id']}');
   }
   
   

@@ -8,34 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/ChatPage.dart';
-
-/// 好友的实体类
-class Friend{
-  String account;
-  String nickname;
-  String avatarUrl;
-  bool isOnline;
-
-  Friend({
-
-    required this.account,
-    required this.nickname,
-    required this.avatarUrl,
-    required this.isOnline,
-  });
-
-  @override
-  String toString() {
-    // TODO: implement toString
-    return jsonEncode({
-      'account': account,
-      'nickname': nickname,
-      'avatarUrl': avatarUrl,
-      'isOnline': isOnline,
-    });
-  }
-
-}
+import '../../entity/Friend.dart';
 
 class FriendListModel with ChangeNotifier {
   //好友列表,使用Map来存储好友信息,方便通过id来查找好友和去重

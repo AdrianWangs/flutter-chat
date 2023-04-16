@@ -3,12 +3,11 @@ import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_demo/common/Global.dart';
-import 'package:flutter_demo/env/Env.dart';
+import 'package:flutter_demo/common/WebSocketManager.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:flutter_demo/tools/database.dart';
 
 import '../pages/chat/ChatPage.dart';
@@ -39,40 +38,31 @@ class ChatPageState extends State<ChatPage> {
 
   @override
   void initState() {
+    super.initState();
+
     // 在构造函数中初始化私有变量
     _account = widget.account;
     _nickname = widget.nickname;
     _avatarUrl = widget.avatarUrl;
 
     init();
-    super.initState();
   }
 
 
-  //////////////////////////
+  /// ///////////////////////
   ///  初始化             ///
   /// 1.获取用户信息       ///
   /// 2.连接WebSocket    ///
   /// 3.监听WebSocket消息 ///
   /// /////////////////////
   void init() async {
-    //从Preferences中获取用户信息
-    Global.prefs = await SharedPreferences.getInstance();
-    String userInfo = Global.prefs?.getString("userInfo") ?? "";
-
-    //将用户信息转换为Map
-    Map<String, dynamic> userMap = jsonDecode(userInfo);
-
-    print("=================UserInfo==============");
-    print(userMap);
-    print("====================================");
 
     //初始化私有变量
-    _myAccount = userMap["account"];
-    _myNickname = userMap["name"];
-    _myAvatarUrl = userMap["avatarUrl"];
+    _myAccount = Global.user["account"];
+    _myNickname = Global.user["name"];
+    _myAvatarUrl = Global.user["avatarUrl"];
     //将int类型的id转换为String类型
-    _myId = userMap["id"].toString();
+    _myId = Global.user["id"].toString();
 
     //从本地数据库中获取聊天记录
     getDataFromDatabase();
@@ -97,11 +87,13 @@ class ChatPageState extends State<ChatPage> {
       )
       )
       ..get().then((value) {
-        value.forEach((element) {
+        for (var element in value) {
 
+          if (kDebugMode) {
+            print("=============从数据库中获取到的聊天记录==========");
+            print(element);
+          }
 
-          print("=============从数据库中获取到的聊天记录==========");
-          print(element);
 
 
 
@@ -121,129 +113,28 @@ class ChatPageState extends State<ChatPage> {
               'timestamp': element.messageTime
             });
           });
-        });
+        }
       });
   }
-
-
-  //WebSocket Channel
-  // late IOWebSocketChannel channel;
 
   ///初始化WebSocket
   ///即设置连接地址，开始监听消息
   void initWebSocket() {
 
-    Global.channel?.sink.close();
-    Global.channel = null;
+    WebSocketManager.addListener(handleMessage);
 
-
-    Global.channel = IOWebSocketChannel.connect(
-        "${Env.SOCKET_HOST}/websocket/$_myId"
-    );
-
-    //监听WebSocket消息
-    Global.channel?.stream.listen(handleMessage);
   }
 
   //消息处理
   void handleMessage(message) {
 
     //开始处理消息
-    print("=============开始处理websocket获取到的消息==========");
-
-
+    if (kDebugMode) {
+      print("=============开始处理websocket获取到的消息==========");
+    }
 
     //将消息转换为Map
     Map<String, dynamic> messageMap = jsonDecode(message);
-
-
-    print(messageMap);
-
-    //数据格式
-    // {
-    //     "type": "message",
-    //     "sender": {
-    //        "avatarUrl":"https://xxxxx",
-    //        "nickname": "xxxxx",
-    //        "account": "020301700164"
-    //      },
-    //     "receiver": {
-    //        "account": "351244716"
-    //     },
-    //     "message": {
-    //        "type": "text",
-    //        "messageInfo": {
-    //           "text": "xxxxx"
-    //        }
-    //      },
-    //     "timestamp": 1588888888888
-    // }
-
-    //数据表格式
-    //CREATE TABLE `chat_data` (
-    //  `id` int(11) NOT NULL AUTO_INCREMENT,
-    //  `avatar_url` varchar(255) DEFAULT NULL,
-    //  `nickname` varchar(255) DEFAULT NULL,
-    //  `message` varchar(255) DEFAULT NULL,
-    //  `message_time` varchar(255) DEFAULT NULL,
-    //  `account` varchar(255) DEFAULT NULL,
-    //)
-
-
-    //将数据插入到数据库中
-    //将信息添加到最近聊天数据库中
-    //先判断当前聊天是否已经存在
-    _database.select(_database.recentChat)
-      ..where((tbl) => tbl.account.equals(messageMap["sender"]["account"]) )
-      ..get().then((value) {
-
-        //要显示的信息
-        var displayMessage = "";
-        switch(messageMap["message"]["type"]){
-          case "text":
-            displayMessage = messageMap["message"]["messageInfo"]["text"];
-            break;
-        }
-
-
-        //如果存在
-        if (value.isNotEmpty) {
-          //更新聊天记录
-          _database.update(_database.recentChat).replace(RecentChatCompanion(
-              id: drift.Value(value[0].id),
-              nickname: drift.Value(messageMap["sender"]["nickname"]),
-              avatarUrl: drift.Value(messageMap["sender"]["avatarUrl"]),
-              lastMessage: drift.Value(displayMessage),
-              lastMessageTime: drift.Value(messageMap["timestamp"]),
-              senderAccount: drift.Value(value[0].senderAccount),
-              receiverAccount: drift.Value(value[0].receiverAccount),
-              account: drift.Value(value[0].account)
-          ));
-        } else {
-          //如果不存在
-          //将信息添加到数据库中
-          _database.into(_database.recentChat).insert(
-              RecentChatCompanion.insert(
-                  nickname: messageMap["sender"]["nickname"],
-                  avatarUrl: messageMap["sender"]["avatarUrl"],
-                  lastMessage: displayMessage,
-                  lastMessageTime: messageMap["timestamp"],
-                  senderAccount: messageMap["sender"]["account"],
-                  receiverAccount: messageMap["receiver"]["account"],
-                  account: messageMap["receiver"]["account"]));
-        }
-      });
-
-    //将信息添加到数据库中
-    _database.into(_database.chatData).insert(ChatDataCompanion.insert(
-        nickname: messageMap["sender"]["nickname"],
-        avatarUrl: messageMap["sender"]["avatarUrl"],
-        message: jsonEncode(messageMap["message"]),
-        messageTime: messageMap["timestamp"],
-        senderAccount: messageMap["sender"]["account"],
-        receiverAccount: messageMap["receiver"]["account"])
-    );
-
 
     setState(() {
       //将消息添加到消息列表中
@@ -253,7 +144,9 @@ class ChatPageState extends State<ChatPage> {
     showNewMessage();
 
     //结束处理消息
-    print("=============结束处理websocket获取到的消息==========");
+    if (kDebugMode) {
+      print("=============结束处理websocket获取到的消息==========");
+    }
 
   }
 
@@ -262,9 +155,9 @@ class ChatPageState extends State<ChatPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          margin: EdgeInsets.only(bottom: 50),
+          margin: const EdgeInsets.only(bottom: 50),
           behavior: SnackBarBehavior.floating,
-          content: Text('收到新消息'),
+          content: const Text('收到新消息'),
           action: SnackBarAction(
             label: '查看',
             onPressed: () {
@@ -329,7 +222,7 @@ class ChatPageState extends State<ChatPage> {
     //通过WebSocket发送消息
     //检查channel是否已经连接
     // ignore: unnecessary_null_comparison
-    if (Global.channel?.sink != null) {
+    if (WebSocketManager.webSocketChannel?.sink != null) {
       //将消息转换为json字符串，消息中存在的时间戳需要转换为字符串
       // Map<String, dynamic> messageMap = {};
 
@@ -388,12 +281,14 @@ class ChatPageState extends State<ChatPage> {
           messageTime: data["timestamp"],
           senderAccount: data["sender"]["account"],
           receiverAccount: data["receiver"]["account"]));
+
       //将消息发送到服务器
 
-
-      Global.channel?.sink.add(jsonEncode(data));
+      WebSocketManager.sendMessage(jsonEncode(data));
     } else {
-      print("websocket未连接");
+      if (kDebugMode) {
+        print("websocket未连接");
+      }
     }
 
     setState(() {
@@ -414,6 +309,7 @@ class ChatPageState extends State<ChatPage> {
 
   }
 
+  ///滚动到最后一条消息
   void reachBottom() {
     //等一秒后再滚动到最后一条消息
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -575,7 +471,7 @@ class ChatPageState extends State<ChatPage> {
                                         Text(
                                           fileSize,
                                           style:
-                                          Theme.of(context).textTheme.caption,
+                                          Theme.of(context).textTheme.bodySmall,
                                         ),
                                       ],
                                     ))

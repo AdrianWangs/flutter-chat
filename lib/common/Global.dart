@@ -4,4 +4,5 @@ import 'package:web_socket_channel/io.dart';
 class Global{
   static SharedPreferences? prefs;
   static IOWebSocketChannel? channel;
+  static Map<String, dynamic> user = {};
 }

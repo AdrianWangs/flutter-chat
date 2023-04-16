@@ -3,28 +3,21 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_demo/common/WebSocketManager.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web_socket_channel/io.dart';
 
 import '../entity/Chat.dart';
-import '../env/Env.dart';
 import '../model/ChatListModel.dart';
 import '../pages/chat/ChatList.dart';
 import '../pages/chat/ChatPage.dart';
 import '../tools/database.dart';
-import '../common/Global.dart';
 
 class ChatListState extends State<ChatList> {
   late BuildContext copyContext;
 
-  // late IOWebSocketChannel channel;
-
   final _database = ChatDatabase();
-  Map<String, dynamic> user = {};
-
 
   @override
   void initState() {
@@ -42,7 +35,7 @@ class ChatListState extends State<ChatList> {
       //清空好友列表
       Provider.of<ChatListModel>(copyContext, listen: false).clearChatList();
 
-      value.forEach((element) {
+      for (var element in value) {
         //将聊天记录添加到好友列表中
         Provider.of<ChatListModel>(copyContext, listen: false).addChat(Chat(
           nickname: element.nickname,
@@ -51,30 +44,13 @@ class ChatListState extends State<ChatList> {
           lastMessageTime: element.lastMessageTime.toString(),
           account: element.account,
         ));
-      });
+      }
     });
   }
 
 
   void updatePage() {
-
-
-    print("页面重新显示");
-
     updateChatList();
-
-    Global.channel?.sink.close();
-
-    Global.channel = IOWebSocketChannel.connect(
-        '${Env.SOCKET_HOST}/websocket/${user['id']}'
-    );
-
-    //监听服务端的消息
-    Global.channel?.stream.listen(
-      receiveNewMessage,
-    );
-
-
   }
 
 
@@ -82,26 +58,9 @@ class ChatListState extends State<ChatList> {
   void initWebSocket() async {
     //获取数据库中的的用户信息
 
-    Global.prefs ??= await SharedPreferences.getInstance();
+    //设置监听事件
+    WebSocketManager.addListener(receiveNewMessage);
 
-    String? userInfo = Global.prefs?.getString('userInfo');
-    if (userInfo == null) {
-      return;
-    }
-
-    user = jsonDecode(userInfo);
-
-
-    Global.channel?.sink.close();
-
-    Global.channel = IOWebSocketChannel.connect(
-          '${Env.SOCKET_HOST}/websocket/${user['id']}'
-    );
-
-    //监听服务端的消息
-    Global.channel?.stream.listen(
-      receiveNewMessage,
-    );
   }
 
   //收到新消息后的处理事件
@@ -113,7 +72,9 @@ class ChatListState extends State<ChatList> {
     try {
       decodedMessage = jsonDecode(message);
     } catch (e) {
-      print("非json格式");
+      if (kDebugMode) {
+        print("非json格式");
+      }
       return;
     }
 
@@ -180,7 +141,10 @@ class ChatListState extends State<ChatList> {
   }
 
   void addMessageList(Map<String, dynamic> chatList) {
-    print(chatList);
+
+    if (kDebugMode) {
+      print(chatList);
+    }
 
 
     //要显示的信息
@@ -224,9 +188,11 @@ class ChatListState extends State<ChatList> {
 
                   return InkWell(
                     onTap: () {
-                      print("============ThisFriend=============");
-                      print(friend);
-                      print("===================================");
+                      if (kDebugMode) {
+                        print("============ThisFriend=============");
+                        print(friend);
+                        print("===================================");
+                      }
 
                       //跳转到聊天页面
                       var result =  Navigator.push(this.context,

@@ -12,10 +12,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+
   setupDataBases();
 
   realRunApp();
 }
+
 
 void realRunApp() async {
   bool isLogin = await LoginMsg.getLoginMsg();
@@ -36,7 +38,6 @@ void realRunApp() async {
 class LoginMsg {
   static Future<bool> getLoginMsg() async {
     var host = Env.HOST;
-
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     //获取cookie

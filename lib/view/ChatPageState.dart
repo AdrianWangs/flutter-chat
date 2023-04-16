@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,6 +10,9 @@ import 'package:flutter_demo/common/Global.dart';
 import 'package:flutter_demo/common/WebSocketManager.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_demo/tools/database.dart';
+import 'package:crypto/crypto.dart';
+import 'package:convert/convert.dart';
+
 
 import '../pages/chat/ChatPage.dart';
 
@@ -70,9 +74,6 @@ class ChatPageState extends State<ChatPage> {
     initWebSocket();
   }
 
-
-
-
   ///从本地数据库中获取聊天记录
   void getDataFromDatabase(){
     //查询数据库中的聊天记录
@@ -125,7 +126,7 @@ class ChatPageState extends State<ChatPage> {
 
   }
 
-  //消息处理
+  ///消息处理
   void handleMessage(message) {
 
     //开始处理消息
@@ -166,35 +167,14 @@ class ChatPageState extends State<ChatPage> {
           ),
         )
     );
-
   }
 
 
-
+  ///点击按钮发送文本消息
   void sendMessage() {
     if (message.isNotEmpty) {
       //清空输入框
       FocusScope.of(context).requestFocus(FocusNode());
-
-      //数据格式
-      // {
-      //     "type": "message",
-      //     "sender": {
-      //        "avatarUrl":"https://xxxxx",
-      //        "nickname": "xxxxx",
-      //        "account": "020301700164"
-      //      },
-      //     "receiver": {
-      //        "account": "351244716"
-      //     },
-      //     "message": {
-      //        "type": "text",
-      //        "messageInfo": {
-      //           "text": "xxxxx"
-      //        }
-      //      },
-      //     "timestamp": 1588888888888
-      // }
 
       sendData({
         'type': 'message',
@@ -309,6 +289,20 @@ class ChatPageState extends State<ChatPage> {
 
   }
 
+  ///将文件大小转换为可读的字符串
+  String parseFileSize(double size){
+    if (size > 1024 * 1024 * 1024) {
+      return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(2)}GB';
+    }
+    if (size > 1024 * 1024) {
+      return '${(size / (1024 * 1024)).toStringAsFixed(2)}MB';
+    }
+    if (size > 1024) {
+      return '${(size / 1024).toStringAsFixed(2)}KB';
+    }
+    return '${size.toStringAsFixed(2)}B';
+  }
+
   ///滚动到最后一条消息
   void reachBottom() {
     //等一秒后再滚动到最后一条消息
@@ -376,11 +370,15 @@ class ChatPageState extends State<ChatPage> {
 
                   var text = "";
 
-                  if(type == "text"){
-                    text = message["message"]['messageInfo']['text'];
-                  }else{
-                    text = "文件";
+                  switch(type){
+                    case "text":
+                      text = message["message"]['messageInfo']['text'];
+                      break;
+                    case "file":
+                      text = "文件";
+                      break;
                   }
+
 
                   return ListTile(
 
@@ -413,85 +411,81 @@ class ChatPageState extends State<ChatPage> {
                         var maxWidth = textPainter.width + 40;
 
                         Widget title;
-                        if (type == 'image') { //如果发来的是图片
-                          String imageUrl = message['imageUrl'];
-                          if (imageUrl.split(":").first != "http" ||
-                              imageUrl.split(":").first != "https") {
-                            title = Image.file(
-                              File(imageUrl),
-                              fit: BoxFit.cover,
-                            );
-                          } else {
-                            title = Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                            );
+
+                        switch(type){
+                          case "image":{
+                            String imageUrl = message['imageUrl'];
+                            if (imageUrl.split(":").first != "http" ||
+                                imageUrl.split(":").first != "https") {
+                              title = Image.file(
+                                File(imageUrl),
+                                fit: BoxFit.cover,
+                              );
+                            } else {
+                              title = Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                              );
+                            }
+
+                            maxWidth = constraints.maxWidth * 0.8;
+                            break;
                           }
+                          case "file":{
+                            var fileSize = message['fileSize'];
+                            var fileName = message['fileName'];
+                            var fileUrl = message['fileUrl'];
 
-                          maxWidth = constraints.maxWidth * 0.8;
-                        } else if (type == 'file') {
-                          var fileSize = message['fileSize'];
-                          var fileName = message['fileName'];
-                          var fileUrl = message['fileUrl'];
+                            fileSize = parseFileSize(double.parse(fileSize));
 
-                          var size = double.parse(fileSize);
-                          if (size > 1024 * 1024 * 1024) {
-                            fileSize =
-                            '${(size / (1024 * 1024 * 1024)).toStringAsFixed(2)}GB';
-                          } else if (size > 1024 * 1024) {
-                            fileSize =
-                            '${(size / (1024 * 1024)).toStringAsFixed(2)}MB';
-                          } else if (size > 1024) {
-                            fileSize = '${(size / 1024).toStringAsFixed(2)}KB';
-                          } else {
-                            fileSize = '${size.toStringAsFixed(2)}B';
+                            title = Container(
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    //根据页面宽度计算图标大小
+                                    size: constraints.maxWidth * 0.2,
+                                    Icons.insert_drive_file,
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(
+                                    width: 4,
+                                  ),
+                                  Flexible(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            fileName,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            fileSize,
+                                            style:
+                                            Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ))
+                                ],
+                              ),
+                            );
+                            maxWidth = constraints.maxWidth * 0.8;
+                            // title = Image.network(
+                            //   text,
+                            //   fit: BoxFit.cover,
+                            // );
+                            break;
                           }
-
-                          title = Container(
-                            child: Row(
-                              children: <Widget>[
-                                Icon(
-                                  //根据页面宽度计算图标大小
-                                  size: constraints.maxWidth * 0.2,
-                                  Icons.insert_drive_file,
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(
-                                  width: 4,
-                                ),
-                                Flexible(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        Text(
-                                          fileName,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          fileSize,
-                                          style:
-                                          Theme.of(context).textTheme.bodySmall,
-                                        ),
-                                      ],
-                                    ))
-                              ],
-                            ),
-                          );
-                          maxWidth = constraints.maxWidth * 0.8;
-                          // title = Image.network(
-                          //   text,
-                          //   fit: BoxFit.cover,
-                          // );
-                        } else {
-
-                          title = Text(
-                            text,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: isMe ? TextAlign.right : TextAlign.left,
-                          );
+                            default:{
+                              title = Text(
+                                text,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: isMe ? TextAlign.right : TextAlign.left,
+                              );
+                            }
                         }
+
 
                         return Align(
                             alignment: isMe
@@ -535,18 +529,18 @@ class ChatPageState extends State<ChatPage> {
               ),
               //发送图片按钮
               IconButton(
-                icon: Icon(Icons.image),
+                icon: const Icon(Icons.image),
                 color: Colors.blue,
                 onPressed: chooseImage,
               ),
               //发送文件按钮
               IconButton(
-                icon: Icon(Icons.attach_file),
+                icon: const Icon(Icons.attach_file),
                 color: Colors.blue,
                 onPressed: chooseFile,
               ),
               IconButton(
-                icon: Icon(Icons.send),
+                icon: const Icon(Icons.send),
                 color: Colors.blue,
                 onPressed: sendMessage,
               ),
@@ -559,7 +553,7 @@ class ChatPageState extends State<ChatPage> {
 
   void chooseImage() async {
     final ImagePicker _picker = ImagePicker();
-    File _userImageFile;
+    File userImageFile;
 
     var onceimages = await _picker.pickImage(source: ImageSource.camera);
 
@@ -591,7 +585,9 @@ class ChatPageState extends State<ChatPage> {
     for (var xfile in files) {
       File file = File(xfile.path);
 
-      print("文件路径：${file.path}");
+      if (kDebugMode) {
+        print("文件路径：${file.path}");
+      }
       //判断文件类型是否为图片
       switch (file.path.split('.').last) {
         case 'jpg':
@@ -599,10 +595,6 @@ class ChatPageState extends State<ChatPage> {
         case 'jpeg':
           sendImage(file.path);
           break;
-      // case 'mp4':
-      //   sendVideo();
-      //   break;
-
         default:
           {
             //判断是不是文件夹
@@ -612,16 +604,18 @@ class ChatPageState extends State<ChatPage> {
               List<FileSystemEntity> list = dir.listSync(recursive: true);
               for (var f in list) {
                 if (FileSystemEntity.isFileSync(f.path)) {
-                  String fileUrl = uploadFile(File(f.path));
-                  sendFile(fileUrl, f.statSync().size.toString(),
+                  uploadFile(File(f.path), f.statSync().size.toString(),
                       f.path.split('/').last);
+                  // sendFile(fileUrl, f.statSync().size.toString(),
+                  //     f.path.split('/').last);
                 }
               }
               return;
             } else {
-              String fileUrl = uploadFile(file);
-              sendFile(fileUrl, file.lengthSync().toString(),
+               uploadFile(file, file.lengthSync().toString(),
                   file.path.split('/').last);
+              // sendFile(fileUrl, file.lengthSync().toString(),
+              //     file.path.split('/').last);
             }
           }
       }
@@ -630,23 +624,66 @@ class ChatPageState extends State<ChatPage> {
 
 
   void sendFile(String fileUrl, String fileSize, String fileName) {
+
+    return;
+
     sendData({
-      'type': 'file',
-      'sender': 'me',
-      'text': '',
-      'fileUrl': fileUrl,
-      'fileSize': fileSize,
-      'fileName': fileName,
-      'timestamp': DateTime.now(),
-      'nickname': 'Me',
-      'avatarUrl': 'https://www.baidu.com/img/bd_logo1.png?where=super'
+      'type': 'message',
+      'sender': {
+        'avatarUrl': _myAvatarUrl,
+        'nickname': _myNickname,
+        'account': _myAccount
+      },
+      'receiver': {
+        'account': _account,
+      },
+      'message': {
+        'type': 'file',
+        'messageInfo': {
+          'fileUrl': fileUrl,
+          'fileSize': fileSize,
+          'fileName': fileName,
+        }
+      },
+      'timestamp': DateTime.now().millisecondsSinceEpoch
     });
   }
 
   ///上传文件
   ///返回文件的url
-  String uploadFile(File file) {
+  Future<String> uploadFile(File file, String fileSize, String last) async {
+
+    //如果文件不存在，直接返回
+    if (!file.existsSync()) {
+      throw Exception('文件不存在');
+    }
+
+    //计算文件hash
+    String fileHash = (await calculateFileHash(file)).toString();
+
+    if (kDebugMode) {
+      print('文件hash：$fileHash');
+    }
+
+    //TODO 判断文件是否已经上传过，如果上传过，直接返回url
+
     return '';
   }
 
+  ///计算大文件hash
+  Future<String> calculateFileHash(File file) async {
+
+    var inputStream = file.openRead();
+    var output = AccumulatorSink<Digest>();
+    var input = sha1.startChunkedConversion(output);
+
+    await for (var chunk in inputStream) {
+      input.add(chunk);
+    }
+
+    input.close();
+    var digest = output.events.single;
+
+    return hex.encode(digest.bytes);
+  }
 }

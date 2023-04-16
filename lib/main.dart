@@ -7,7 +7,6 @@ import 'package:flutter_demo/env/Env.dart';
 import 'package:flutter_demo/pages/home/HomePage.dart';
 import 'package:flutter_demo/pages/home/LoginPage.dart';
 import 'package:flutter_demo/setup.dart';
-import 'package:flutter_demo/tools/database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -37,6 +36,7 @@ void realRunApp() async {
 class LoginMsg {
   static Future<bool> getLoginMsg() async {
     var host = Env.HOST;
+
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     //获取cookie

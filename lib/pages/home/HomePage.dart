@@ -113,10 +113,10 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: Icon(Icons.people),
             label: '好友列表',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '我的',
-          ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.person),
+          //   label: '我的',
+          // ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: const Color.fromARGB(255, 38, 118, 192),

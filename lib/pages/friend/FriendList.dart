@@ -133,6 +133,7 @@ class FriendList extends StatelessWidget{
         builder: (context, friendListModel, child) {
           this.context = context;
           return Scaffold(
+
             body: ListView.builder(
               itemCount: friendListModel.friends.length,
               itemBuilder: (context, index) {

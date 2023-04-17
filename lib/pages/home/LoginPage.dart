@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../env/Env.dart';
+import '../../tools/HttpTool.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -94,6 +95,8 @@ class _LoginPageState extends State<LoginPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
       prefs.setString('cookie', cookie!.first);
+
+      HttpTool.headers['cookie'] = cookie!.first;
 
       //显示登录成功
       ScaffoldMessenger.of(context).showSnackBar(

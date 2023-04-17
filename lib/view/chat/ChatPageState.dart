@@ -14,7 +14,7 @@ import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 
 
-import '../pages/chat/ChatPage.dart';
+import '../../pages/chat/ChatPage.dart';
 
 class ChatPageState extends State<ChatPage> {
   final _database = ChatDatabase();

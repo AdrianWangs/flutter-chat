@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../view/ChatPageState.dart';
+import '../../view/chat/ChatPageState.dart';
 
 class ChatPage extends StatefulWidget {
   final String account;

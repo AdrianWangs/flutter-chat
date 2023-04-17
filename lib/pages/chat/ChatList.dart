@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_demo/view/ChatListState.dart';
+import 'package:flutter_demo/view/chat/ChatListState.dart';
 
 class ChatList extends StatefulWidget {
   @override

@@ -8,11 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_demo/common/WebSocketManager.dart';
 import 'package:provider/provider.dart';
 
-import '../entity/Chat.dart';
-import '../model/ChatListModel.dart';
-import '../pages/chat/ChatList.dart';
-import '../pages/chat/ChatPage.dart';
-import '../tools/database.dart';
+import '../../entity/Chat.dart';
+import '../../model/ChatListModel.dart';
+import '../../pages/chat/ChatList.dart';
+import '../../pages/chat/ChatPage.dart';
+import '../../tools/database.dart';
 
 class ChatListState extends State<ChatList> {
   late BuildContext copyContext;

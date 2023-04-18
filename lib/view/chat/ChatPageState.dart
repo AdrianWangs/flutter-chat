@@ -3,15 +3,18 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_demo/common/Global.dart';
 import 'package:flutter_demo/common/WebSocketManager.dart';
+import 'package:flutter_demo/env/Env.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_demo/tools/database.dart';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
+import 'package:path/path.dart';
 
 
 import '../../pages/chat/ChatPage.dart';
@@ -138,8 +141,14 @@ class ChatPageState extends State<ChatPage> {
     Map<String, dynamic> messageMap = jsonDecode(message);
 
     if(messageMap['type']!='message'){
+
+      print("=============websocket获取到的消息不是聊天消息==========");
+
+      print(messageMap);
+
       return;
     }
+
 
 
     setState(() {
@@ -159,7 +168,7 @@ class ChatPageState extends State<ChatPage> {
   ///在浏览其他信息时，收到新消息时，显示新消息提示
   void showNewMessage(){
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context as BuildContext).showSnackBar(
         SnackBar(
           margin: const EdgeInsets.only(bottom: 50),
           behavior: SnackBarBehavior.floating,
@@ -179,7 +188,7 @@ class ChatPageState extends State<ChatPage> {
   void sendMessage() {
     if (message.isNotEmpty) {
       //清空输入框
-      FocusScope.of(context).requestFocus(FocusNode());
+      FocusScope.of(context as BuildContext).requestFocus(FocusNode());
 
       sendData({
         'type': 'message',
@@ -656,7 +665,7 @@ class ChatPageState extends State<ChatPage> {
 
   ///上传文件
   ///返回文件的url
-  Future<String> uploadFile(File file, String fileSize, String last) async {
+  Future<dynamic> uploadFile(File file, String fileSize, String last) async {
 
     //如果文件不存在，直接返回
     if (!file.existsSync()) {
@@ -670,17 +679,54 @@ class ChatPageState extends State<ChatPage> {
       print('文件hash：$fileHash');
     }
 
-    //TODO 判断文件是否已经上传过，如果上传过，直接返回url
+    // 计算文件的总块数和每个块的大小
+    final fileSize = await file.length();
+    int chunkSize = 5 * 1024 * 1024; // 每个块大小为 5MB
+    final totalChunks = (fileSize / chunkSize).ceil();
 
-    return '';
+    // 创建 Dio 实例，并设置请求头
+    final dio = Dio();
+    dio.options.headers['content-type'] = 'multipart/form-data';
+
+    // 遍历每一块并上传
+    for (var i = 0; i < totalChunks; i++) {
+      // 计算当前块的起始位置和大小
+      final startByte = i * chunkSize;
+      var endByte = (i + 1) * chunkSize;
+      if (endByte > fileSize) {
+        endByte = fileSize;
+      }
+      chunkSize = endByte - startByte;
+
+      // 创建 FormData 对象，并添加需要携带的参数
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          file.readAsBytesSync().sublist(startByte, endByte),
+          filename: 'chunk_$i', // 给当前块命名
+        ),
+        'filename': file.path.split('/').last, // 文件名称
+        'chunkIndex': i.toString(), // 当前块的索引
+        'totalChunks': totalChunks.toString(), // 总块数
+        'chunkSize': chunkSize.toString(), // 当前块大小
+        'fileSize': fileSize.toString(), // 文件总大小
+        'hash': fileHash, // 文件 hash
+      });
+
+      // 发送请求
+      await dio.post('${Env.HOST}/upload', data: formData);
+    }
+
   }
 
   ///计算大文件hash
   Future<String> calculateFileHash(File file) async {
 
+    //开始时间
+    var start = DateTime.now().millisecondsSinceEpoch;
+
     var inputStream = file.openRead();
     var output = AccumulatorSink<Digest>();
-    var input = sha1.startChunkedConversion(output);
+    var input = md5.startChunkedConversion(output);
 
     await for (var chunk in inputStream) {
       input.add(chunk);
@@ -688,6 +734,13 @@ class ChatPageState extends State<ChatPage> {
 
     input.close();
     var digest = output.events.single;
+
+    //结束时间
+    var end = DateTime.now().millisecondsSinceEpoch;
+
+    if (kDebugMode) {
+      print('计算文件hash耗时：${end - start}ms');
+    }
 
     return hex.encode(digest.bytes);
   }

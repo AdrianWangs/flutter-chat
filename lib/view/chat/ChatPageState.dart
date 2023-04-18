@@ -137,6 +137,11 @@ class ChatPageState extends State<ChatPage> {
     //将消息转换为Map
     Map<String, dynamic> messageMap = jsonDecode(message);
 
+    if(messageMap['type']!='message'){
+      return;
+    }
+
+
     setState(() {
       //将消息添加到消息列表中
       messages.add(messageMap);

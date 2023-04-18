@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_demo/common/WebSocketManager.dart';
+import 'package:flutter_demo/tools/HttpTool.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../common/Global.dart';
@@ -9,6 +10,7 @@ import '../../env/Env.dart';
 import '../chat/ChatList.dart';
 import '../friend/FriendList.dart';
 import '../friend/AddFriendPage.dart';
+import '../friend/FriendRequestList.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -21,6 +23,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
 
+  int _notificationCount = 0;
   String _title = "";
   int _selectedIndex = 0;
   Widget body = ChatList();
@@ -37,9 +40,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void initData() async {
+
     Global.prefs ??= await SharedPreferences.getInstance();
 
     String? userInfo = Global.prefs?.getString('userInfo');
+    HttpTool.headers['cookie'] = Global.prefs?.getString('cookie');
+
     if (userInfo == null) {
       return;
     }
@@ -52,6 +58,22 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void connectWebSocket() async {
     WebSocketManager.connect('${Env.SOCKET_HOST}/websocket/${Global.user['id']}');
+    WebSocketManager.addListener(listenNotification);
+  }
+
+
+  void listenNotification(message){
+    //将消息转换为Map
+    Map<String, dynamic> messageMap = jsonDecode(message);
+
+    if(messageMap['type']!='add'){
+      return;
+    }
+
+    setState(() {
+      _notificationCount++;
+    });
+
   }
 
   void jumpTo(int index){
@@ -97,6 +119,68 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               },
             ),
+
+          if(_notificationCount == 0)
+            Stack(
+              children: [
+                IconButton(
+                  padding: const EdgeInsets.only(right: 8,top: 17),
+                  icon: const Icon(Icons.notifications_none),
+                  onPressed: () {
+                    setState(() {
+                      _notificationCount = 0;
+                    });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => FriendRequestList()),
+                    );
+                  },
+                )
+              ]
+            ),
+          if(_notificationCount > 0)
+            Stack(
+              children: [
+                IconButton(
+                  padding: const EdgeInsets.only(right: 8,top: 17),
+                  icon: const Icon(Icons.notifications),
+                  onPressed: () {
+                    setState(() {
+                      _notificationCount = 0;
+                    });
+                    //TODO 跳转到好友申请处理页面
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => FriendRequestList()),
+                    );
+                  },
+                ),
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.all(0),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 13,
+                      minHeight: 13,
+                    ),
+                    child: Text(
+                      '$_notificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              ],
+          ),
 
         ],
       ),

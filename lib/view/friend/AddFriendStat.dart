@@ -4,6 +4,9 @@ import 'package:flutter_demo/env/Env.dart';
 import 'package:flutter_demo/pages/friend/AddFriendPage.dart';
 import 'package:flutter_demo/tools/HttpTool.dart';
 
+import '../../common/Global.dart';
+import '../../common/WebSocketManager.dart';
+
 
 class FriendItem extends StatelessWidget {
 
@@ -20,12 +23,56 @@ class FriendItem extends StatelessWidget {
       title: Text(userData['name']),
       subtitle: Text(userData['account']),
       trailing: ElevatedButton(
-        onPressed: () {
-          // TODO 处理添加好友的逻辑
+        onPressed: () async {
+          var response = await HttpTool.get("${Env.HOST}/addFriend/${userData['id']}", params: {});
+
+          //如果返回true，说明添加成功
+          if (response.data || response.data == 'true') {
+
+
+            //通过websocket发送添加好友的消息
+            sendRequestNotification(
+              Global.user['avatarUrl'],
+              Global.user['nickname'],
+              Global.user['account'],
+              userData['account']
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('已发送申请'),
+              ),
+            );
+
+
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('添加失败，请联系管理员'),
+              ),
+            );
+          }
+
         },
         child: const Text('添加好友'),
       ),
     );
+  }
+
+  void sendRequestNotification(myAvatarUrl, myNickName, myAccount, receiverAccount) {
+    WebSocketManager.sendMessage({
+      'type': 'add',
+      'sender': {
+        'avatarUrl': myAvatarUrl,
+        'nickname': myNickName,
+        'account': myAccount
+      },
+      'receiver': {
+        'account': receiverAccount,
+      },
+      'message': {
+      },
+      'timestamp': DateTime.now().millisecondsSinceEpoch
+    });
   }
 }
 

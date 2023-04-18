@@ -78,66 +78,70 @@ class ChatListState extends State<ChatList> {
       return;
     }
 
-    //如果是好友列表消息
-    if (decodedMessage["type"] == 'message') {
-      //将信息添加到最近聊天数据库中
-      //先判断当前聊天是否已经存在
-      _database.select(_database.recentChat)
-        ..where(
-                (tbl) => tbl.account.equals(decodedMessage['sender']["account"]))
-        ..get().then((value) {
 
-
-          //要显示的信息
-          var displayMessage = "";
-          switch(decodedMessage["message"]["type"]){
-            case "text":
-              displayMessage = decodedMessage["message"]["messageInfo"]["text"];
-              break;
-          }
-
-          //如果存在
-          if (value.isNotEmpty) {
-            //更新聊天记录
-            _database.update(_database.recentChat).replace(RecentChatCompanion(
-                id: Value(value[0].id),
-                nickname: Value(decodedMessage["sender"]['nickname']),
-                avatarUrl: Value(decodedMessage["sender"]['avatarUrl']),
-                lastMessage: Value(displayMessage),
-                lastMessageTime: Value(decodedMessage["timestamp"]),
-                senderAccount: Value(decodedMessage["sender"]['account']),
-                receiverAccount: Value(decodedMessage["receiver"]['account']),
-                account: Value(value[0].account)));
-          } else {
-            //如果不存在
-            //将信息添加到数据库中
-            _database.into(_database.recentChat).insert(
-                RecentChatCompanion.insert(
-                    nickname: decodedMessage["sender"]['nickname'],
-                    avatarUrl: decodedMessage["sender"]['avatarUrl'],
-                    lastMessage: displayMessage,
-                    lastMessageTime: decodedMessage["timestamp"],
-                    senderAccount: decodedMessage["sender"]['account'],
-                    receiverAccount: decodedMessage["receiver"]['account'],
-                    account: decodedMessage["receiver"]['account']));
-          }
-        });
-
-      //TODO 消息标红
-
-      //将信息添加到数据库中
-      _database.into(_database.chatData).insert(ChatDataCompanion.insert(
-        nickname: decodedMessage["sender"]['nickname'],
-        avatarUrl: decodedMessage["sender"]['avatarUrl'],
-        message: jsonEncode(decodedMessage['message']),
-        messageTime: decodedMessage["timestamp"],
-        senderAccount: decodedMessage["sender"]['account'],
-        receiverAccount: decodedMessage["receiver"]['account'],
-      ));
-
-      //将消息添加到好友列表中
-      addMessageList(decodedMessage);
+    if (decodedMessage["type"] != 'message'){
+      return;
     }
+
+    //如果是好友列表消息
+    //将信息添加到最近聊天数据库中
+    //先判断当前聊天是否已经存在
+    _database.select(_database.recentChat)
+      ..where(
+              (tbl) => tbl.account.equals(decodedMessage['sender']["account"]))
+      ..get().then((value) {
+
+
+        //要显示的信息
+        var displayMessage = "";
+        switch(decodedMessage["message"]["type"]){
+          case "text":
+            displayMessage = decodedMessage["message"]["messageInfo"]["text"];
+            break;
+        }
+
+        //如果存在
+        if (value.isNotEmpty) {
+          //更新聊天记录
+          _database.update(_database.recentChat).replace(RecentChatCompanion(
+              id: Value(value[0].id),
+              nickname: Value(decodedMessage["sender"]['nickname']),
+              avatarUrl: Value(decodedMessage["sender"]['avatarUrl']),
+              lastMessage: Value(displayMessage),
+              lastMessageTime: Value(decodedMessage["timestamp"]),
+              senderAccount: Value(decodedMessage["sender"]['account']),
+              receiverAccount: Value(decodedMessage["receiver"]['account']),
+              account: Value(value[0].account)));
+        } else {
+          //如果不存在
+          //将信息添加到数据库中
+          _database.into(_database.recentChat).insert(
+              RecentChatCompanion.insert(
+                  nickname: decodedMessage["sender"]['nickname'],
+                  avatarUrl: decodedMessage["sender"]['avatarUrl'],
+                  lastMessage: displayMessage,
+                  lastMessageTime: decodedMessage["timestamp"],
+                  senderAccount: decodedMessage["sender"]['account'],
+                  receiverAccount: decodedMessage["receiver"]['account'],
+                  account: decodedMessage["receiver"]['account']));
+        }
+      });
+
+    //TODO 消息标红
+
+    //将信息添加到数据库中
+    _database.into(_database.chatData).insert(ChatDataCompanion.insert(
+      nickname: decodedMessage["sender"]['nickname'],
+      avatarUrl: decodedMessage["sender"]['avatarUrl'],
+      message: jsonEncode(decodedMessage['message']),
+      messageTime: decodedMessage["timestamp"],
+      senderAccount: decodedMessage["sender"]['account'],
+      receiverAccount: decodedMessage["receiver"]['account'],
+    ));
+
+    //将消息添加到好友列表中
+    addMessageList(decodedMessage);
+
   }
 
   void addMessageList(Map<String, dynamic> chatList) {

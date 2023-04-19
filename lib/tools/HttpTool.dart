@@ -11,6 +11,7 @@ class HttpTool{
   static Future get(String url, {required Map<String, dynamic> params}) async {
     try {
       Response response = await dio.get(url, queryParameters: params, options: Options(headers: headers));
+
       return response;
     } catch (e) {
       print(e);

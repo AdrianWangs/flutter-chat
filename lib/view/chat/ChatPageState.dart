@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -10,11 +11,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_demo/common/Global.dart';
 import 'package:flutter_demo/common/WebSocketManager.dart';
 import 'package:flutter_demo/env/Env.dart';
+import 'package:flutter_demo/tools/HttpTool.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_demo/tools/database.dart';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 import '../../pages/chat/ChatPage.dart';
@@ -378,6 +382,8 @@ class ChatPageState extends State<ChatPage> {
                   final type = message["message"]['type'];
                   final isMe = message["sender"]['account'] == _myAccount;
 
+
+
                   final avatarUrl = message["sender"]['avatarUrl'];
                   final nickname = message["sender"]['nickname'];
                   final timestamp = message['timestamp'];
@@ -392,6 +398,7 @@ class ChatPageState extends State<ChatPage> {
                       text = "文件";
                       break;
                   }
+
 
 
                   return ListTile(
@@ -446,48 +453,49 @@ class ChatPageState extends State<ChatPage> {
                             break;
                           }
                           case "file":{
-                            var fileSize = message['fileSize'];
-                            var fileName = message['fileName'];
-                            var fileUrl = message['fileUrl'];
+
+                            print(message);
+                            var fileSize = message["message"]['messageInfo']['fileSize'].toString();
+                            var fileName = message["message"]['messageInfo']['fileName'];
+                            var fileUrl = "${Env.HOST}/download/hash/${message["message"]['messageInfo']['fileHash']}";
 
                             fileSize = parseFileSize(double.parse(fileSize));
 
-                            title = Container(
-                              child: Row(
-                                children: <Widget>[
-                                  Icon(
-                                    //根据页面宽度计算图标大小
-                                    size: constraints.maxWidth * 0.2,
-                                    Icons.insert_drive_file,
-                                    color: Colors.blue,
-                                  ),
-                                  const SizedBox(
-                                    width: 4,
-                                  ),
-                                  Flexible(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Text(
-                                            fileName,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            fileSize,
-                                            style:
-                                            Theme.of(context).textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ))
-                                ],
-                              ),
+
+                            title = GestureDetector(
+                                onTap:() => downloadFile(fileUrl, fileName),
+                                child:Row(
+                                  children: <Widget>[
+                                    Icon(
+                                      //根据页面宽度计算图标大小
+                                      size: constraints.maxWidth * 0.2,
+                                      Icons.insert_drive_file,
+                                      color: Colors.blue,
+                                    ),
+                                    const SizedBox(
+                                      width: 4,
+                                    ),
+                                    Flexible(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text(
+                                              fileName,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              fileSize,
+                                              style:
+                                              Theme.of(context).textTheme.bodySmall,
+                                            ),
+                                          ],
+                                        ))
+                                  ],
+                                )
                             );
                             maxWidth = constraints.maxWidth * 0.8;
-                            // title = Image.network(
-                            //   text,
-                            //   fit: BoxFit.cover,
-                            // );
+
                             break;
                           }
                             default:{
@@ -672,8 +680,25 @@ class ChatPageState extends State<ChatPage> {
       throw Exception('文件不存在');
     }
 
+
+
     //计算文件hash
     String fileHash = (await calculateFileHash(file)).toString();
+
+    //通过hash值判断文件是否已经上传过
+
+
+    var response = await HttpTool.get(
+        '${Env.HOST}/hash/$fileHash',
+        params: {}
+    );
+    if (response.data != null && response.data != "") {
+
+      //如果文件已经上传过，直接返回文件的url
+      sendFileData(response.data);
+      return response.data;
+    }
+
 
     if (kDebugMode) {
       print('文件hash：$fileHash');
@@ -687,6 +712,7 @@ class ChatPageState extends State<ChatPage> {
     // 创建 Dio 实例，并设置请求头
     final dio = Dio();
     dio.options.headers['content-type'] = 'multipart/form-data';
+    dio.options.headers['cookie'] = HttpTool.headers['cookie'];
 
     // 遍历每一块并上传
     for (var i = 0; i < totalChunks; i++) {
@@ -713,9 +739,39 @@ class ChatPageState extends State<ChatPage> {
       });
 
       // 发送请求
-      await dio.post('${Env.HOST}/upload', data: formData);
+      var response = await dio.post('${Env.HOST}/upload', data: formData);
+      if (response.data != null && response.data != "") {
+
+        sendFileData(response.data);
+
+        return response.data;
+      }
     }
 
+  }
+
+
+  void sendFileData(Map<String, dynamic> data) {
+    sendData({
+      'type': 'message',
+      'sender': {
+        'avatarUrl': _myAvatarUrl,
+        'nickname': _myNickname,
+        'account': _myAccount
+      },
+      'receiver': {
+        'account': _account,
+      },
+      'message': {
+        'type': 'file',
+        'messageInfo': {
+          'fileHash': data['hash'],
+          'fileSize': data['size'],
+          'fileName': data['name'],
+        }
+      },
+      'timestamp': DateTime.now().millisecondsSinceEpoch
+    });
   }
 
   ///计算大文件hash
@@ -744,4 +800,81 @@ class ChatPageState extends State<ChatPage> {
 
     return hex.encode(digest.bytes);
   }
+
+  void downloadFile(String fileUrl, String fileName) async {
+
+
+    print('开始下载文件：$fileUrl');
+    //获取文件保存路径
+    String savePath = await getSavePath(fileName);
+
+    //创建文件
+    File file = File(savePath);
+
+    //如果文件已经存在，直接打开
+    if (file.existsSync()) {
+      openFile(file);
+      return;
+    }
+
+    //创建文件夹
+    Directory dir = Directory(savePath.substring(0, savePath.lastIndexOf('/')));
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+
+    //创建文件
+    file.createSync();
+
+
+
+    print('开始下载文件：$fileUrl');
+
+
+    //下载文件
+    Dio dio = Dio();
+    dio.options.headers['cookie'] = HttpTool.headers['cookie'];
+    dio.download(fileUrl, savePath, onReceiveProgress: (received, total) {
+      if (total != -1) {
+        print((received / total * 100).toStringAsFixed(0) + "%");
+      }
+    }).then((response) {
+      if (response.statusCode == 200) {
+        openFile(file);
+      }
+    });
+  }
+
+  getSavePath(String fileName) async {
+    String savePath = '';
+
+    //获取沙盒目录
+    String dir = (await getApplicationDocumentsDirectory()).path;
+
+    //创建Download目录，如果已经存在，则不创建
+    Directory downloadDir = Directory('$dir/Download');
+    if (!downloadDir.existsSync()) {
+      downloadDir.createSync();
+    }
+
+    //创建文件
+    savePath = '$dir/Download/$fileName';
+
+    return savePath;
+  }
+
+  void openFile(File file) async {
+
+
+    Uri uri = Uri.file(file.path);
+    print('打开文件：${file.path}');
+    // final url = 'http://www.baidu.com';
+    final url = uri.toString();
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not open file';
+    }
+  }
+
 }

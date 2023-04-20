@@ -94,9 +94,25 @@ class ChatListState extends State<ChatList> {
 
         //要显示的信息
         var displayMessage = "";
+
         switch(decodedMessage["message"]["type"]){
           case "text":
             displayMessage = decodedMessage["message"]["messageInfo"]["text"];
+            break;
+          case "image":
+            displayMessage = "[图片]";
+            break;
+          case "voice":
+            displayMessage = "[语音]";
+            break;
+          case "video":
+            displayMessage = "[视频]";
+            break;
+          case "file":
+            displayMessage = "[文件]";
+            break;
+          default:
+            displayMessage = "[未知消息]";
             break;
         }
 

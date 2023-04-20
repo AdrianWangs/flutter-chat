@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' as drift;
@@ -35,6 +36,8 @@ class ChatPageState extends State<ChatPage> {
   late String _myNickname;
   late String _myAvatarUrl;
   late String _myId;
+
+  late String _imagePath;
 
   String message = '';
   final List<Map<String, dynamic>> messages = [];
@@ -379,11 +382,17 @@ class ChatPageState extends State<ChatPage> {
 
                   final message = messages[index];
 
+
+
+                  //消息的类型
                   final type = message["message"]['type'];
+
+
+                  //判断是否是自己发送的消息
                   final isMe = message["sender"]['account'] == _myAccount;
 
 
-
+                  //发送者的信息
                   final avatarUrl = message["sender"]['avatarUrl'];
                   final nickname = message["sender"]['nickname'];
                   final timestamp = message['timestamp'];
@@ -396,6 +405,9 @@ class ChatPageState extends State<ChatPage> {
                       break;
                     case "file":
                       text = "文件";
+                      break;
+                    case "image":
+                      text = "图片";
                       break;
                   }
 
@@ -433,28 +445,26 @@ class ChatPageState extends State<ChatPage> {
 
                         Widget title;
 
+
+                        print("type: $type");
+
                         switch(type){
                           case "image":{
-                            String imageUrl = message['imageUrl'];
-                            if (imageUrl.split(":").first != "http" ||
-                                imageUrl.split(":").first != "https") {
-                              title = Image.file(
-                                File(imageUrl),
-                                fit: BoxFit.cover,
-                              );
-                            } else {
-                              title = Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                              );
-                            }
+                            var fileSize = message["message"]['messageInfo']['fileSize'].toString();
+                            var fileName = message["message"]['messageInfo']['fileName'];
+                            var imageUrl = "${Env.HOST}/download/hash/${message["message"]['messageInfo']['fileHash']}";
+
+                            title = CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              placeholder: (context, url) => const CircularProgressIndicator(),
+                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                            );
 
                             maxWidth = constraints.maxWidth * 0.8;
                             break;
                           }
                           case "file":{
 
-                            print(message);
                             var fileSize = message["message"]['messageInfo']['fileSize'].toString();
                             var fileName = message["message"]['messageInfo']['fileName'];
                             var fileUrl = "${Env.HOST}/download/hash/${message["message"]['messageInfo']['fileHash']}";
@@ -486,8 +496,7 @@ class ChatPageState extends State<ChatPage> {
                                             const SizedBox(height: 4),
                                             Text(
                                               fileSize,
-                                              style:
-                                              Theme.of(context).textTheme.bodySmall,
+                                              style: Theme.of(context).textTheme.bodySmall,
                                             ),
                                           ],
                                         ))
@@ -574,31 +583,65 @@ class ChatPageState extends State<ChatPage> {
   }
 
   void chooseImage() async {
-    final ImagePicker _picker = ImagePicker();
-    File userImageFile;
 
-    var onceimages = await _picker.pickImage(source: ImageSource.camera);
 
-    List<File> images = [];
-    images.add(File(onceimages!.path));
-    for (var image in images) {
-      sendImage(image.path);
+    //image_picker只支持android和ios，web，
+    //所以这边要判断一下
+    if (kIsWeb || Platform.isIOS || Platform.isAndroid) {
+      final ImagePicker _picker = ImagePicker();
+
+      //选择图片
+      XFile? onceimages = await _picker.pickImage(source: ImageSource.gallery);
+
+      List<File> images = [];
+      images.add(File(onceimages!.path));
+
+      for (File image in images) {
+        await uploadFile(image, image.lengthSync().toString());
+      }
+    }else{
+      const XTypeGroup jpgsTypeGroup = XTypeGroup(
+        label: 'JPEGs',
+        extensions: <String>['jpg', 'jpeg'],
+      );
+      const XTypeGroup pngTypeGroup = XTypeGroup(
+        label: 'PNGs',
+        extensions: <String>['png'],
+      );
+      final List<XFile> files = await openFiles(acceptedTypeGroups: <XTypeGroup>[
+        jpgsTypeGroup,
+        pngTypeGroup,
+      ]);
+      if (files.isEmpty) {
+        return;
+      }
+
+      for (XFile file in files) {
+        await uploadFile(File(file.path), (await file.length()).toString() );
+      }
+
     }
+
+
   }
 
-  void chooseFile() async {}
+  void chooseFile() async {
+    const XTypeGroup fileTypeGroup = XTypeGroup(
+      label: 'Files',
+    );
+    final List<XFile> files = await openFiles(acceptedTypeGroups: <XTypeGroup>[
+      fileTypeGroup,
+    ]);
+    if (files.isEmpty) {
+      return;
+    }
 
-  void sendImage(String imageUrl) {
-    sendData({
-      'type': 'image',
-      'sender': 'me',
-      'text': '',
-      'imageUrl': imageUrl,
-      'timestamp': DateTime.now(),
-      'nickname': 'Me',
-      'avatarUrl': 'https://www.baidu.com/img/bd_logo1.png?where=super'
-    });
+    for (XFile file in files) {
+      await uploadFile(File(file.path), (await file.length()).toString() );
+    }
+
   }
+
 
   //拖拽发送文件
   void _dragDone(DropDoneDetails detail) {
@@ -610,70 +653,37 @@ class ChatPageState extends State<ChatPage> {
       if (kDebugMode) {
         print("文件路径：${file.path}");
       }
-      //判断文件类型是否为图片
-      switch (file.path.split('.').last) {
-        case 'jpg':
-        case 'png':
-        case 'jpeg':
-          sendImage(file.path);
-          break;
-        default:
-          {
-            //判断是不是文件夹
-            if (FileSystemEntity.isDirectorySync(file.path)) {
-              //层次遍历并发送文件
-              Directory dir = Directory(file.path);
-              List<FileSystemEntity> list = dir.listSync(recursive: true);
-              for (var f in list) {
-                if (FileSystemEntity.isFileSync(f.path)) {
-                  uploadFile(File(f.path), f.statSync().size.toString(),
-                      f.path.split('/').last);
-                  // sendFile(fileUrl, f.statSync().size.toString(),
-                  //     f.path.split('/').last);
-                }
-              }
-              return;
-            } else {
-               uploadFile(file, file.lengthSync().toString(),
-                  file.path.split('/').last);
-              // sendFile(fileUrl, file.lengthSync().toString(),
-              //     file.path.split('/').last);
-            }
+
+      //判断是不是文件夹
+      if (FileSystemEntity.isDirectorySync(file.path)) {
+        //层次遍历并发送文件
+        Directory dir = Directory(file.path);
+        List<FileSystemEntity> list = dir.listSync(recursive: true);
+        for (var f in list) {
+          if (FileSystemEntity.isFileSync(f.path)) {
+            uploadFile(File(f.path), f.statSync().size.toString());
+            // sendFile(fileUrl, f.statSync().size.toString(),
+            //     f.path.split('/').last);
           }
+        }
+        return;
+      } else {
+        uploadFile(file, file.lengthSync().toString());
+        // sendFile(fileUrl, file.lengthSync().toString(),
+        //     file.path.split('/').last);
       }
+
     }
   }
 
 
   void sendFile(String fileUrl, String fileSize, String fileName) {
-
     return;
-
-    sendData({
-      'type': 'message',
-      'sender': {
-        'avatarUrl': _myAvatarUrl,
-        'nickname': _myNickname,
-        'account': _myAccount
-      },
-      'receiver': {
-        'account': _account,
-      },
-      'message': {
-        'type': 'file',
-        'messageInfo': {
-          'fileUrl': fileUrl,
-          'fileSize': fileSize,
-          'fileName': fileName,
-        }
-      },
-      'timestamp': DateTime.now().millisecondsSinceEpoch
-    });
   }
 
   ///上传文件
   ///返回文件的url
-  Future<dynamic> uploadFile(File file, String fileSize, String last) async {
+  Future<dynamic> uploadFile(File file, String fileSize) async {
 
     //如果文件不存在，直接返回
     if (!file.existsSync()) {
@@ -751,7 +761,14 @@ class ChatPageState extends State<ChatPage> {
   }
 
 
+  ///发送文件数据，通过socket发送
   void sendFileData(Map<String, dynamic> data) {
+
+    var type = 'file';
+    if(identityPicture(data['name'])){
+      type = 'image';
+    }
+
     sendData({
       'type': 'message',
       'sender': {
@@ -763,7 +780,7 @@ class ChatPageState extends State<ChatPage> {
         'account': _account,
       },
       'message': {
-        'type': 'file',
+        'type': type,
         'messageInfo': {
           'fileHash': data['hash'],
           'fileSize': data['size'],
@@ -801,8 +818,24 @@ class ChatPageState extends State<ChatPage> {
     return hex.encode(digest.bytes);
   }
 
-  void downloadFile(String fileUrl, String fileName) async {
 
+  bool identityPicture(String fileName) {
+    switch(fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+      case 'webp':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+
+
+  Future<String> downloadFile(String fileUrl, String fileName) async {
 
     print('开始下载文件：$fileUrl');
     //获取文件保存路径
@@ -813,8 +846,8 @@ class ChatPageState extends State<ChatPage> {
 
     //如果文件已经存在，直接打开
     if (file.existsSync()) {
-      openFile(file);
-      return;
+      _openFile(file);
+      return savePath;
     }
 
     //创建文件夹
@@ -827,7 +860,6 @@ class ChatPageState extends State<ChatPage> {
     file.createSync();
 
 
-
     print('开始下载文件：$fileUrl');
 
 
@@ -836,13 +868,18 @@ class ChatPageState extends State<ChatPage> {
     dio.options.headers['cookie'] = HttpTool.headers['cookie'];
     dio.download(fileUrl, savePath, onReceiveProgress: (received, total) {
       if (total != -1) {
-        print((received / total * 100).toStringAsFixed(0) + "%");
+
+        //TODO 更新下载进度
+        print("${(received / total * 100).toStringAsFixed(0)}%");
       }
     }).then((response) {
       if (response.statusCode == 200) {
-        openFile(file);
+          _openFile(file);
       }
     });
+
+    return savePath;
+
   }
 
   getSavePath(String fileName) async {
@@ -850,6 +887,19 @@ class ChatPageState extends State<ChatPage> {
 
     //获取沙盒目录
     String dir = (await getApplicationDocumentsDirectory()).path;
+
+
+    //判断是否是图片
+    if(identityPicture(fileName)) {
+      //创建Image目录，如果已经存在，则不创建
+      Directory imageDir = Directory('$dir/Image');
+      if (!imageDir.existsSync()) {
+        imageDir.createSync();
+      }
+      //创建文件
+      savePath = '$dir/Image/$fileName';
+      return savePath;
+    }
 
     //创建Download目录，如果已经存在，则不创建
     Directory downloadDir = Directory('$dir/Download');
@@ -863,12 +913,16 @@ class ChatPageState extends State<ChatPage> {
     return savePath;
   }
 
-  void openFile(File file) async {
+
+  void openImage(File file) async {
+    //Todo 目前不需要任何操作
+  }
+
+  void _openFile(File file) async {
 
 
     Uri uri = Uri.file(file.path);
     print('打开文件：${file.path}');
-    // final url = 'http://www.baidu.com';
     final url = uri.toString();
     if (await canLaunch(url)) {
       await launch(url);

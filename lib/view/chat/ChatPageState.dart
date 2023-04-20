@@ -744,8 +744,25 @@ class ChatPageState extends State<ChatPage> {
     );
     if (response.data != null && response.data != "") {
 
+
+
+      setState(() {
+
+        uploadProcess.progress = 1;
+
+        //延迟100毫秒，让进度条显示完成
+        Future.delayed(Duration(milliseconds: 100), () {
+          uploadProcess.isComplete = true;
+        });
+
+        _uploadProcess.remove(uploadProcess);
+      });
+
       //如果文件已经上传过，直接返回文件的url
       sendFileData(response.data);
+
+
+
       return response.data;
     }
 

@@ -24,6 +24,16 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../pages/chat/ChatPage.dart';
 
+
+class UploadProcess {
+  String fileName;
+  double progress;
+  bool isComplete = false;
+
+  UploadProcess(this.fileName, this.progress, this.isComplete);
+}
+
+
 class ChatPageState extends State<ChatPage> {
   final _database = ChatDatabase();
 
@@ -38,6 +48,8 @@ class ChatPageState extends State<ChatPage> {
   late String _myId;
 
   late String _imagePath;
+
+  List<UploadProcess> _uploadProcess = [];
 
   String message = '';
   final List<Map<String, dynamic>> messages = [];
@@ -61,7 +73,6 @@ class ChatPageState extends State<ChatPage> {
 
     init();
   }
-
 
   /// ///////////////////////
   ///  初始化             ///
@@ -104,9 +115,6 @@ class ChatPageState extends State<ChatPage> {
             print("=============从数据库中获取到的聊天记录==========");
             print(element);
           }
-
-
-
 
           //将聊天记录添加到消息列表中
           setState(() {
@@ -190,7 +198,6 @@ class ChatPageState extends State<ChatPage> {
     );
   }
 
-
   ///点击按钮发送文本消息
   void sendMessage() {
     if (message.isNotEmpty) {
@@ -218,6 +225,7 @@ class ChatPageState extends State<ChatPage> {
     }
   }
 
+  ///发送消息的最终方法
   void sendData(Map<String, dynamic> data) {
 
     //通过WebSocket发送消息
@@ -327,7 +335,7 @@ class ChatPageState extends State<ChatPage> {
   ///滚动到最后一条消息
   void reachBottom() {
     //等一秒后再滚动到最后一条消息
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent + 50,
         duration: const Duration(milliseconds: 500),
@@ -335,7 +343,6 @@ class ChatPageState extends State<ChatPage> {
       );
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -347,8 +354,6 @@ class ChatPageState extends State<ChatPage> {
       ),
       body: Column(
         children: <Widget>[
-          //添加一个空白区域
-
           DropTarget(
             onDragDone: _dragDone,
             onDragUpdated: (details) => {
@@ -382,8 +387,6 @@ class ChatPageState extends State<ChatPage> {
 
                   final message = messages[index];
 
-
-
                   //消息的类型
                   final type = message["message"]['type'];
 
@@ -397,8 +400,8 @@ class ChatPageState extends State<ChatPage> {
                   final nickname = message["sender"]['nickname'];
                   final timestamp = message['timestamp'];
 
+                  //消息的内容
                   var text = "";
-
                   switch(type){
                     case "text":
                       text = message["message"]['messageInfo']['text'];
@@ -409,6 +412,9 @@ class ChatPageState extends State<ChatPage> {
                     case "image":
                       text = "图片";
                       break;
+                    case "video":
+                      text = "视频";
+                      break;
                   }
 
 
@@ -416,16 +422,12 @@ class ChatPageState extends State<ChatPage> {
                   return ListTile(
 
                     //如果是自己发送的消息，就显示在右边，否则显示在左边
-                    leading: isMe
-                        ? null
-                        : CircleAvatar(
+                    leading: isMe ? null : CircleAvatar(
                       backgroundImage: NetworkImage(avatarUrl),
                     ),
-                    trailing: isMe
-                        ? CircleAvatar(
+                    trailing: isMe ? CircleAvatar(
                       backgroundImage: NetworkImage(avatarUrl),
-                    )
-                        : null,
+                    ) : null,
 
 
                     title: LayoutBuilder(
@@ -444,9 +446,6 @@ class ChatPageState extends State<ChatPage> {
                         var maxWidth = textPainter.width + 40;
 
                         Widget title;
-
-
-                        print("type: $type");
 
                         switch(type){
                           case "image":{
@@ -540,6 +539,50 @@ class ChatPageState extends State<ChatPage> {
               ),
             ),
           ),
+          //进度条列表
+          SizedBox(
+            height: _uploadProcess.length * 50.0,
+            child: ListView.builder(
+              scrollDirection: Axis.vertical,
+              itemCount: _uploadProcess.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    //高雅黑
+                    color: Color(0xFF32373A),
+                  ),
+                  height: 50,
+                  child: ListTile(
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _uploadProcess[index].fileName,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          //宽度是屏幕宽度的0.5
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          child: LinearProgressIndicator(
+                            value:_uploadProcess[index].progress,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           Row(
             children: <Widget>[
               Expanded(
@@ -582,9 +625,8 @@ class ChatPageState extends State<ChatPage> {
     );
   }
 
+  ///选择图片
   void chooseImage() async {
-
-
     //image_picker只支持android和ios，web，
     //所以这边要判断一下
     if (kIsWeb || Platform.isIOS || Platform.isAndroid) {
@@ -625,6 +667,7 @@ class ChatPageState extends State<ChatPage> {
 
   }
 
+  ///选择文件
   void chooseFile() async {
     const XTypeGroup fileTypeGroup = XTypeGroup(
       label: 'Files',
@@ -642,8 +685,7 @@ class ChatPageState extends State<ChatPage> {
 
   }
 
-
-  //拖拽发送文件
+  ///拖拽发送文件
   void _dragDone(DropDoneDetails detail) {
     List<XFile> files = detail.files;
 
@@ -676,11 +718,6 @@ class ChatPageState extends State<ChatPage> {
     }
   }
 
-
-  void sendFile(String fileUrl, String fileSize, String fileName) {
-    return;
-  }
-
   ///上传文件
   ///返回文件的url
   Future<dynamic> uploadFile(File file, String fileSize) async {
@@ -690,14 +727,17 @@ class ChatPageState extends State<ChatPage> {
       throw Exception('文件不存在');
     }
 
+    UploadProcess uploadProcess = UploadProcess("上传：${file.path.split('/').last}", 0,false);
+
+    setState(() {
+      _uploadProcess.add(uploadProcess);
+    });
 
 
     //计算文件hash
     String fileHash = (await calculateFileHash(file)).toString();
 
     //通过hash值判断文件是否已经上传过
-
-
     var response = await HttpTool.get(
         '${Env.HOST}/hash/$fileHash',
         params: {}
@@ -713,6 +753,7 @@ class ChatPageState extends State<ChatPage> {
     if (kDebugMode) {
       print('文件hash：$fileHash');
     }
+
 
     // 计算文件的总块数和每个块的大小
     final fileSize = await file.length();
@@ -748,18 +789,34 @@ class ChatPageState extends State<ChatPage> {
         'hash': fileHash, // 文件 hash
       });
 
-      // 发送请求
-      var response = await dio.post('${Env.HOST}/upload', data: formData);
-      if (response.data != null && response.data != "") {
 
-        sendFileData(response.data);
+      // 发送请求,添加上传进度监听
+      response = await dio.post('${Env.HOST}/upload', data: formData,onSendProgress: (int sent, int total) {
+        if (kDebugMode) {
+          print('上传进度：${sent / total}');
+          setState(() {
+            uploadProcess.progress = sent.toDouble() / total.toDouble() /totalChunks.toDouble();
+          });
+        }
+      });
 
-        return response.data;
-      }
+
+    }
+
+    setState(() {
+      uploadProcess.isComplete = true;
+      _uploadProcess.remove(uploadProcess);
+    });
+
+
+    if (response.data != null && response.data != "") {
+
+      sendFileData(response.data);
+
+      return response.data;
     }
 
   }
-
 
   ///发送文件数据，通过socket发送
   void sendFileData(Map<String, dynamic> data) {
@@ -818,7 +875,7 @@ class ChatPageState extends State<ChatPage> {
     return hex.encode(digest.bytes);
   }
 
-
+  ///判断是否是图片
   bool identityPicture(String fileName) {
     switch(fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()) {
       case 'jpg':
@@ -833,11 +890,11 @@ class ChatPageState extends State<ChatPage> {
     }
   }
 
-
-
+  ///下载文件
   Future<String> downloadFile(String fileUrl, String fileName) async {
 
-    print('开始下载文件：$fileUrl');
+
+
     //获取文件保存路径
     String savePath = await getSavePath(fileName);
 
@@ -850,6 +907,15 @@ class ChatPageState extends State<ChatPage> {
       return savePath;
     }
 
+    if (kDebugMode) {
+      print('开始下载文件：$fileUrl');
+    }
+    UploadProcess uploadProcess = UploadProcess("下载：$fileName", 0,false);
+
+    setState(() {
+      _uploadProcess.add(uploadProcess);
+    });
+
     //创建文件夹
     Directory dir = Directory(savePath.substring(0, savePath.lastIndexOf('/')));
     if (!dir.existsSync()) {
@@ -860,28 +926,35 @@ class ChatPageState extends State<ChatPage> {
     file.createSync();
 
 
-    print('开始下载文件：$fileUrl');
 
 
     //下载文件
     Dio dio = Dio();
     dio.options.headers['cookie'] = HttpTool.headers['cookie'];
-    dio.download(fileUrl, savePath, onReceiveProgress: (received, total) {
+    await dio.download(fileUrl, savePath, onReceiveProgress: (received, total) {
       if (total != -1) {
-
-        //TODO 更新下载进度
-        print("${(received / total * 100).toStringAsFixed(0)}%");
+        print((received / total * 100).toStringAsFixed(0) + "%" + "  " + received.toString() + "  " + total.toString());
+        setState(() {
+          uploadProcess.progress = received.toDouble() / total.toDouble();
+        });
       }
     }).then((response) {
+
       if (response.statusCode == 200) {
           _openFile(file);
       }
+    });
+
+    setState(() {
+      uploadProcess.isComplete = true;
+      _uploadProcess.remove(uploadProcess);
     });
 
     return savePath;
 
   }
 
+  ///获取文件保存路径
   getSavePath(String fileName) async {
     String savePath = '';
 
@@ -913,16 +986,18 @@ class ChatPageState extends State<ChatPage> {
     return savePath;
   }
 
-
+  ///打开图片
   void openImage(File file) async {
     //Todo 目前不需要任何操作
   }
 
+  ///打开文件
   void _openFile(File file) async {
 
-
     Uri uri = Uri.file(file.path);
-    print('打开文件：${file.path}');
+    if (kDebugMode) {
+      print('打开文件：${file.path}');
+    }
     final url = uri.toString();
     if (await canLaunch(url)) {
       await launch(url);

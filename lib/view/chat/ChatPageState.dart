@@ -49,6 +49,8 @@ class ChatPageState extends State<ChatPage> {
 
   late String _imagePath;
 
+  late BuildContext copyContext;
+
   List<UploadProcess> _uploadProcess = [];
 
   String message = '';
@@ -183,7 +185,7 @@ class ChatPageState extends State<ChatPage> {
   ///在浏览其他信息时，收到新消息时，显示新消息提示
   void showNewMessage(){
 
-    ScaffoldMessenger.of(context as BuildContext).showSnackBar(
+    ScaffoldMessenger.of(copyContext).showSnackBar(
         SnackBar(
           margin: const EdgeInsets.only(bottom: 50),
           behavior: SnackBarBehavior.floating,
@@ -202,7 +204,10 @@ class ChatPageState extends State<ChatPage> {
   void sendMessage() {
     if (message.isNotEmpty) {
       //清空输入框
-      FocusScope.of(context as BuildContext).requestFocus(FocusNode());
+      FocusScope.of(copyContext).requestFocus(FocusNode());
+
+
+      //TODO 发送消息显示的名称和头像应该是接受者的（在我发送的情况下）
 
       sendData({
         'type': 'message',
@@ -213,6 +218,8 @@ class ChatPageState extends State<ChatPage> {
         },
         'receiver': {
           'account': _account,
+          'nickname': _nickname,
+          'avatarUrl': _avatarUrl
         },
         'message': {
           'type': 'text',
@@ -275,10 +282,12 @@ class ChatPageState extends State<ChatPage> {
 
 
             //更新聊天记录
+            //由于最近聊天列表一定只显示对方的信息
+            //故只需要更新为对方的信息即可
             _database.update(_database.recentChat).replace(RecentChatCompanion(
                 id: drift.Value(value[0].id),
-                nickname: drift.Value(data["sender"]["nickname"]),
-                avatarUrl: drift.Value(data["sender"]["avatarUrl"]),
+                nickname: drift.Value(_nickname),
+                avatarUrl: drift.Value(_avatarUrl),
                 lastMessage: drift.Value(displayMessage),
                 lastMessageTime: drift.Value(data["timestamp"]),
                 senderAccount: drift.Value(value[0].senderAccount),
@@ -289,8 +298,8 @@ class ChatPageState extends State<ChatPage> {
             //如果不存在
             //将信息添加到数据库中
             _database.into(_database.recentChat).insert(RecentChatCompanion.insert(
-                nickname: data["sender"]["nickname"],
-                avatarUrl: data["sender"]["avatarUrl"],
+                nickname: _nickname,
+                avatarUrl: _avatarUrl,
                 lastMessage: displayMessage,
                 lastMessageTime: data["timestamp"],
                 senderAccount: data["sender"]["account"],
@@ -304,7 +313,8 @@ class ChatPageState extends State<ChatPage> {
           message: jsonEncode(data["message"]),
           messageTime: data["timestamp"],
           senderAccount: data["sender"]["account"],
-          receiverAccount: data["receiver"]["account"]));
+          receiverAccount: data["receiver"]["account"])
+      );
 
       //将消息发送到服务器
 
@@ -362,6 +372,7 @@ class ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
 
+    copyContext = context;
 
     return Scaffold(
       appBar: AppBar(

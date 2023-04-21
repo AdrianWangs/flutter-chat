@@ -119,6 +119,7 @@ class ChatListState extends State<ChatList> {
         //如果存在
         if (value.isNotEmpty) {
           //更新聊天记录
+          //由于我是接收方，所以我要更新的是发送方的信息
           _database.update(_database.recentChat).replace(RecentChatCompanion(
               id: Value(value[0].id),
               nickname: Value(decodedMessage["sender"]['nickname']),
@@ -155,8 +156,10 @@ class ChatListState extends State<ChatList> {
       receiverAccount: decodedMessage["receiver"]['account'],
     ));
 
-    //将消息添加到好友列表中
-    addMessageList(decodedMessage);
+    setState(() {
+      //将消息添加到好友列表中
+      addMessageList(decodedMessage);
+    });
 
   }
 
@@ -173,6 +176,22 @@ class ChatListState extends State<ChatList> {
       case "text":
         displayMessage = chatList["message"]["messageInfo"]["text"];
         break;
+      case "image":
+        displayMessage = "[图片]";
+        break;
+      case "voice":
+        displayMessage = "[语音]";
+        break;
+      case "video":
+        displayMessage = "[视频]";
+        break;
+      case "file":
+        displayMessage = "[文件]";
+        break;
+      default:
+        displayMessage = "[未知消息]";
+        break;
+
     }
 
     //将字符串转化为数字
@@ -182,7 +201,8 @@ class ChatListState extends State<ChatList> {
         avatarUrl: chatList['sender']['avatarUrl'],
         lastMessage: displayMessage,
         lastMessageTime: chatList['timestamp'].toString(),
-        account: chatList['sender']['account']);
+        account: chatList['sender']['account']
+    );
 
     //将好友添加到好友列表中
     Provider.of<ChatListModel>(copyContext, listen: false).addChat(chat);
@@ -220,7 +240,8 @@ class ChatListState extends State<ChatList> {
                             return ChatPage(
                                 account: friend.account,
                                 nickname: friend.nickname,
-                                avatarUrl: friend.avatarUrl);
+                                avatarUrl: friend.avatarUrl
+                            );
                           }));
 
                       //页面返回后，更新好友列表

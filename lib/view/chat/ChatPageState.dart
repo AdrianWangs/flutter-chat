@@ -17,9 +17,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_demo/tools/database.dart';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
-import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_player_macos/video_player_macos.dart';
 
 
 import '../../pages/chat/ChatPage.dart';
@@ -51,10 +52,14 @@ class ChatPageState extends State<ChatPage> {
 
   late BuildContext copyContext;
 
-  List<UploadProcess> _uploadProcess = [];
+
+  final List<UploadProcess> _uploadProcess = [];
 
   String message = '';
   final List<Map<String, dynamic>> messages = [];
+
+  final Map<int, VideoPlayerController> _videoControllers = {};
+  final Map<int,bool> _videoControllersIsInit = {};
 
   //编辑文本框控制器
   final TextEditingController _controller = TextEditingController();
@@ -95,6 +100,10 @@ class ChatPageState extends State<ChatPage> {
     getDataFromDatabase();
     //初始化WebSocket
     initWebSocket();
+
+    //跳到最后一条消息
+    reachBottom();
+
   }
 
   ///从本地数据库中获取聊天记录
@@ -532,14 +541,87 @@ class ChatPageState extends State<ChatPage> {
 
                             break;
                           }
-                            default:{
-                              title = Text(
-                                text,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: isMe ? TextAlign.right : TextAlign.left,
+                          case "video":{
+                              var fileSize = message["message"]['messageInfo']['fileSize']
+                                  .toString();
+                              var fileName = message["message"]['messageInfo']['fileName'];
+                              var fileUrl = "${Env
+                                  .HOST}/download/hash/${message["message"]['messageInfo']['fileHash']}";
+
+                              fileSize = parseFileSize(double.parse(fileSize));
+                              //todo 视频消息
+
+                              if(_videoControllers[index] == null){
+                                //如果没有创建过，就创建一个，注意，这里可能没有创建成功，因为视频文件可能很大，需要时间下载
+                                _videoControllers[index] = VideoPlayerController.network(fileUrl);
+                                _videoControllersIsInit[index] = false;
+                              }
+
+                              _playVideo(fileUrl,fileName,index);
+
+
+                              //视频播放器，宽度是屏幕的0.8，高度是宽度的0.8
+
+                              title = GestureDetector(
+                                onTap:(){
+                                  setState(() {
+                                    if(!_videoControllersIsInit[index]!){
+                                      return;
+                                    }
+                                    if(_videoControllers[index]!.value.isPlaying
+                                    ){
+                                      // 暂停可以随意
+                                      _videoControllers[index]!.pause();
+                                    }else{
+                                      //播放需要暂停其他视频
+                                      _videoControllers.forEach((key, value) {
+                                        if(key != index){
+                                          value.pause();
+                                        }
+                                      });
+                                      _videoControllers[index]!.play();
+                                    }
+                                  });
+                                },
+                                //一个视频，上面带播放按钮
+                                child: Stack(
+                                  children: <Widget>[
+                                    AspectRatio(
+                                      aspectRatio: _videoControllers[index]!.value.aspectRatio,
+                                      child: VideoPlayer(_videoControllers[index]!),
+                                    ),
+                                    Positioned(
+                                      //防在容器正中间
+                                      left: 0,
+                                      right: 0,
+                                      top: 0,
+                                      bottom: 0,
+
+                                      child:
+                                      _videoControllers[index]!.value.isPlaying?
+                                      Container():
+                                      const Icon(Icons.play_arrow,
+                                        color: Colors.white,
+                                        size: 50,
+                                      ),
+                                    )
+                                  ],
+                                ),
                               );
-                            }
+
+
+                              maxWidth = constraints.maxWidth * 0.8;
+
+                              break;
+                          }
+                          default:{
+                            title = Text(
+                              text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: isMe ? TextAlign.right : TextAlign.left,
+                            );
+                          }
                         }
 
 
@@ -730,18 +812,49 @@ class ChatPageState extends State<ChatPage> {
         for (var f in list) {
           if (FileSystemEntity.isFileSync(f.path)) {
             uploadFile(File(f.path), f.statSync().size.toString());
-            // sendFile(fileUrl, f.statSync().size.toString(),
-            //     f.path.split('/').last);
           }
         }
         return;
       } else {
         uploadFile(file, file.lengthSync().toString());
-        // sendFile(fileUrl, file.lengthSync().toString(),
-        //     file.path.split('/').last);
       }
 
     }
+  }
+
+
+  ///尝试播放视频
+  void _playVideo(String url,String fileName,int index) async {
+
+
+
+    //如果已经初始化过了，直接返回
+    if(_videoControllersIsInit[index]!){
+      return;
+    }
+    _videoControllersIsInit[index] = true;
+
+    //下载文件
+    String filePath = await downloadFile(url, fileName,open: false);
+
+    //初始化视频控制器
+    VideoPlayerController controller = VideoPlayerController.file(File(filePath));
+
+    print("初始化视频控制器：${controller.hashCode})");
+    setState(() {
+      _videoControllers[index] = controller;
+      _videoControllers[index]!.initialize().then((_) {
+        setState(() {
+          _videoControllers[index]!.play();
+          //延迟100毫秒，防止视频还没播放就暂停了
+          Future.delayed(const Duration(milliseconds: 100), () {
+            setState(() {
+              _videoControllers[index]!.pause();
+            });
+          });
+        });
+      });
+    });
   }
 
   ///上传文件
@@ -867,6 +980,8 @@ class ChatPageState extends State<ChatPage> {
     var type = 'file';
     if(identityPicture(data['name'])){
       type = 'image';
+    }else if(identityVideo(data['name'])){
+      type = 'video';
     }
 
     sendData({
@@ -933,8 +1048,25 @@ class ChatPageState extends State<ChatPage> {
     }
   }
 
+  ///判断是否是视频
+  bool identityVideo(String fileName) {
+    switch(fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()) {
+      case 'mp4':
+      case 'avi':
+      case 'rmvb':
+      case 'rm':
+      case 'flv':
+      case '3gp':
+      case 'mkv':
+      case 'mov':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   ///下载文件
-  Future<String> downloadFile(String fileUrl, String fileName) async {
+  Future<String> downloadFile(String fileUrl, String fileName, {bool open = true}) async {
 
 
 
@@ -945,7 +1077,7 @@ class ChatPageState extends State<ChatPage> {
     File file = File(savePath);
 
     //如果文件已经存在，直接打开
-    if (file.existsSync()) {
+    if (file.existsSync() && open) {
       _openFile(file);
       return savePath;
     }
@@ -983,7 +1115,7 @@ class ChatPageState extends State<ChatPage> {
       }
     }).then((response) {
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && open) {
           _openFile(file);
       }
     });
@@ -992,6 +1124,7 @@ class ChatPageState extends State<ChatPage> {
       uploadProcess.isComplete = true;
       _uploadProcess.remove(uploadProcess);
     });
+
 
     return savePath;
 
@@ -1047,6 +1180,13 @@ class ChatPageState extends State<ChatPage> {
     } else {
       throw 'Could not open file';
     }
+  }
+
+  Future<VideoPlayerController> getVideoController(String fileUrl,String fileName) async {
+
+    String videoPath = await downloadFile(fileUrl, fileName);
+    return VideoPlayerController.file(File(videoPath));
+
   }
 
 }

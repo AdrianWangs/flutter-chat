@@ -3,16 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  dart_vlc
   desktop_drop
   file_selector_windows
-  flutter_meedu_videoplayer
-  fullscreen_window
-  screen_brightness_windows
-  screen_retriever
   sqlcipher_flutter_libs
   url_launcher_windows
-  window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

@@ -15,17 +15,25 @@ class WebSocketManager {
       //去除重复的监听者
       _listeners.toSet().toList();
 
+      List<int> index = [];
+
       for (var listener in _listeners) {
 
         //如果执行出现异常,则移除该监听者
         try {
           listener(message);
         } catch (e) {
+          print(e);
           print("~~~~~~~~~~~~移除监听者（可能是因为该对象已经销毁）~~~~~~~~~~~~~");
-          _listeners.remove(listener);
+          index.add(_listeners.indexOf(listener));
         }
-
       }
+
+      //移除监听者
+      for(var i in index){
+        _listeners.removeAt(i);
+      }
+
     });
   }
 

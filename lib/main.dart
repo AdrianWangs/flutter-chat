@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_demo/env/Env.dart';
@@ -53,24 +52,27 @@ class LoginMsg {
     dio.options.headers['Cookie'] = cookie;
 
     try {
-      Response response = await dio.get(host + '/userInfo');
+      Response response = await dio.get('$host/userInfo');
 
       if (response.statusCode == 200 && response.data['id'] != 0) {
 
 
-        print("-----------------getUserInfo-----------------");
-        print(response.data);
-        print("---------------------------------------");
+        if (kDebugMode) {
+          print("-----------------getUserInfo-----------------");
+          print(response.data);
+          print("---------------------------------------");
+        }
 
-        //顺便将用户信息保存起来
-        prefs.setString('userInfo', jsonEncode(response.data));
         return true;
       }
     } catch (e) {
 
-      print("-----------------error-----------------");
-      print(e.toString());
-      print("---------------------------------------");
+      if (kDebugMode) {
+        print("-----------------error-----------------");
+        print(e.toString());
+        print("---------------------------------------");
+      }
+
       return false;
     }
 

@@ -52,6 +52,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
     Global.user = jsonDecode(userInfo);
 
+    print("==========全局用户信息==========");
+    print(Global.user);
+
     connectWebSocket();
 
   }

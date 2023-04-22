@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -18,9 +21,9 @@ import 'package:flutter_demo/tools/database.dart';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_macos/video_player_macos.dart';
 
 
 import '../../pages/chat/ChatPage.dart';
@@ -557,7 +560,7 @@ class ChatPageState extends State<ChatPage> {
                                 _videoControllersIsInit[index] = false;
                               }
 
-                              _playVideo(fileUrl,fileName,index);
+
 
 
                               //视频播放器，宽度是屏幕的0.8，高度是宽度的0.8
@@ -566,6 +569,7 @@ class ChatPageState extends State<ChatPage> {
                                 onTap:(){
                                   setState(() {
                                     if(!_videoControllersIsInit[index]!){
+                                      _playVideo(fileUrl,fileName,index);
                                       return;
                                     }
                                     if(_videoControllers[index]!.value.isPlaying
@@ -777,19 +781,41 @@ class ChatPageState extends State<ChatPage> {
 
   ///选择文件
   void chooseFile() async {
-    const XTypeGroup fileTypeGroup = XTypeGroup(
-      label: 'Files',
-    );
-    final List<XFile> files = await openFiles(acceptedTypeGroups: <XTypeGroup>[
-      fileTypeGroup,
-    ]);
-    if (files.isEmpty) {
-      return;
-    }
 
-    for (XFile file in files) {
-      await uploadFile(File(file.path), (await file.length()).toString() );
-    }
+    // if (Platform.isAndroid|| Platform.isMacOS) {
+
+
+      // 如果是安卓平台则使用 FilePicker 打开文件选择器
+      final result = await FilePicker.platform.pickFiles();
+
+      print("result: $result");
+      print("xubsu");
+
+      if (result == null) {
+        return;
+      }
+
+      for (final file in result.files) {
+        await uploadFile(File(file.path!), file.size.toString());
+      }
+      return;
+    // }
+
+    // const XTypeGroup fileTypeGroup = XTypeGroup(
+    //   label: 'Files',
+    // );
+    // final List<XFile> files = await openFiles(acceptedTypeGroups: <XTypeGroup>[
+    //   fileTypeGroup,
+    // ]);
+    //
+    //
+    // if (files.isEmpty) {
+    //   return;
+    // }
+    //
+    // for (XFile file in files) {
+    //   await uploadFile(File(file.path), (await file.length()).toString() );
+    // }
 
   }
 
@@ -1170,6 +1196,42 @@ class ChatPageState extends State<ChatPage> {
   ///打开文件
   void _openFile(File file) async {
 
+    String filename = file.path.substring(file.path.lastIndexOf('/') + 1);
+
+    if(Platform.isAndroid){
+      if(await Permission.storage.request().isGranted){
+        Permission.manageExternalStorage.request();
+
+        //获取手机Downloads目录
+        String downloadsPath = '${(await getExternalStorageDirectory())?.path!}/Download';
+
+
+        if(!Directory(downloadsPath).existsSync()){
+          Directory(downloadsPath).createSync();
+        }
+
+        //创建文件
+        File downloadsFile = File('$downloadsPath/$filename');
+        if (!downloadsFile.existsSync()) {
+          downloadsFile.createSync();
+        }
+
+        //复制文件
+        file.copySync('$downloadsPath/$filename');
+
+
+        String type = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+
+        openFileByAndroid('$downloadsPath/$filename', type);
+
+
+        return;
+
+      }
+
+    }
+
+
     Uri uri = Uri.file(file.path);
     if (kDebugMode) {
       print('打开文件：${file.path}');
@@ -1186,6 +1248,36 @@ class ChatPageState extends State<ChatPage> {
 
     String videoPath = await downloadFile(fileUrl, fileName);
     return VideoPlayerController.file(File(videoPath));
+
+  }
+
+  void openFileByAndroid(String path, String type) async {
+
+
+
+
+    AndroidIntent intent;
+
+    switch(type) {
+      case 'jpg':
+
+        break;
+    }
+
+    intent = AndroidIntent(
+      action: 'action_view',
+      data: Uri.encodeFull(path),
+      type: '*/*',
+      arguments: {'title': '选择打开方式'},
+      flags: <int>[
+        Flag.FLAG_ACTIVITY_NEW_TASK,
+        Flag.FLAG_GRANT_READ_URI_PERMISSION,
+        Flag.FLAG_GRANT_WRITE_URI_PERMISSION,
+      ],
+    );
+    await intent.launch();
+
+
 
   }
 

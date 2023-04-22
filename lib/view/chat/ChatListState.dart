@@ -55,17 +55,12 @@ class ChatListState extends State<ChatList> {
     //查看WebSocketManager中的receiveNewMessage方法是否还在监听
     WebSocketManager.addListener(receiveNewMessage);
 
-
-
-
     updateChatList();
   }
 
 
   /// 初始化websocket
   void initWebSocket() async {
-    //获取数据库中的的用户信息
-
     //设置监听事件
     WebSocketManager.addListener(receiveNewMessage);
 
@@ -164,10 +159,8 @@ class ChatListState extends State<ChatList> {
       receiverAccount: decodedMessage["receiver"]['account'],
     ));
 
-    setState(() {
-      //将消息添加到好友列表中
-      addMessageList(decodedMessage);
-    });
+    //将消息添加到好友列表中
+    addMessageList(decodedMessage);
 
   }
 
@@ -214,6 +207,8 @@ class ChatListState extends State<ChatList> {
 
     //将好友添加到好友列表中
     Provider.of<ChatListModel>(copyContext, listen: false).addChat(chat);
+    //判断当前页面是
+
   }
 
   //添加一个id
@@ -221,7 +216,6 @@ class ChatListState extends State<ChatList> {
 
   @override
   Widget build(BuildContext context) {
-    copyContext = context;
 
     return ChangeNotifierProvider(
       create: (context) => ChatListModel(),

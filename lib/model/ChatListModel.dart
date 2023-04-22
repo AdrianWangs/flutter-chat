@@ -16,7 +16,7 @@ class ChatListModel with ChangeNotifier {
     notifyListeners();
   }
 
-void clearChatList() {
+  void clearChatList() {
     _chats.clear();
     notifyListeners();
   }

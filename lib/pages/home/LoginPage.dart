@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,9 +89,11 @@ class _LoginPageState extends State<LoginPage> {
     final loginUrl = '${Env.HOST}/user/$username/$password';
 
 
-    print("loginUrl: $loginUrl");
+    if (kDebugMode) {
+      print("loginUrl: $loginUrl");
+    }
 
-    final response;
+    final Response response;
 
     try{
       response = await Dio().get(loginUrl);
@@ -107,6 +112,9 @@ class _LoginPageState extends State<LoginPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
 
       prefs.setString('cookie', cookie!.first);
+
+      //顺便将用户信息保存起来
+      prefs.setString('userInfo', jsonEncode(response.data));
 
       HttpTool.headers['cookie'] = cookie!.first;
 

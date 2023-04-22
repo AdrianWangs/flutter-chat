@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_demo/env/Env.dart';
 import 'package:flutter_demo/pages/home/HomePage.dart';
 import 'package:flutter_demo/pages/home/LoginPage.dart';
+import 'package:flutter_demo/pages/home/ReggisterPage.dart';
 import 'package:flutter_demo/setup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,6 +32,7 @@ void realRunApp() async {
     routes: {
       '/home': (context) => MyHomePage(title: "消息列表"),
       '/login': (context) => LoginPage(),
+      '/register': (context) => RegisterPage(),
     },
   ));
 }

@@ -37,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
                 onChanged: (value){
                   username = value;
                 },
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: '请输入用户名',
                   border: OutlineInputBorder(),
                 ),
@@ -67,6 +67,13 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: login,
                 child: const Text('登录'),
               ),
+            ),
+            //注册按钮
+            TextButton(
+              onPressed: (){
+                Navigator.pushNamed(context, '/register');
+              },
+              child: const Text('注册'),
             )
           ],
         ),
@@ -76,15 +83,20 @@ class _LoginPageState extends State<LoginPage> {
 
   void login() async{
 
-    final loginUrl = Env.HOST + '/user/${username}/${password}';
+    final loginUrl = '${Env.HOST}/user/$username/$password';
 
 
     print("loginUrl: $loginUrl");
 
-    final response = await Dio().get(loginUrl);
+    final response;
 
-    print(response.data);
-    print(response.statusCode);
+    try{
+      response = await Dio().get(loginUrl);
+    }catch(e){
+      showErrorMessage('帐号或密码错误');
+      return;
+    }
+
 
     if(response.statusCode == 200 && response.data['id'] != 0){
 
@@ -107,13 +119,19 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushNamed(context, '/home');
 
     }else{
-      //登录失败，弹出提示框
-      showDialog(
+      showErrorMessage('登录失败');
+    }
+  }
+
+
+  void showErrorMessage(String message){
+    //登录失败，弹出提示框
+    showDialog(
         context: context,
         builder: (context){
           return AlertDialog(
             title: const Text('提示'),
-            content: Text("账号或密码错误"),
+            content: Text(message),
             actions: <Widget>[
               TextButton(
                 onPressed: (){
@@ -124,11 +142,7 @@ class _LoginPageState extends State<LoginPage> {
             ],
           );
         }
-      );
-    }
-
-    //登录成功后跳转到首页
-    // Navigator.pushNamed(context, '/home');
+    );
   }
 
 }

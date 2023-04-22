@@ -89,8 +89,7 @@ class FriendList extends StatelessWidget{
     //使用cookie发送请求,使用dio库发送请求
     var dio = Dio();
     dio.options.headers['cookie'] = cookie;
-    var response = await dio.get(Env.HOST + '/friendList');
-
+    var response = await dio.get('${Env.HOST}/friendList');
 
 
     //返回数据格式：
@@ -104,7 +103,7 @@ class FriendList extends StatelessWidget{
     // "friendSex": 0,
     // "addTime": "2022-12-31 21:40:21"}]
     //将返回的数据转换为List<Map<String, dynamic>>
-    List friendList = response.data;
+    List<dynamic> friendList = response.data;
 
     prefs.setString('friendList', jsonEncode(friendList));
 
@@ -147,7 +146,7 @@ class FriendList extends StatelessWidget{
                   ),
                   title: Text(friendListModel.friends[index].nickname),
                   subtitle: Text(friendListModel.friends[index].account),
-                  trailing: friendListModel.friends[index].isOnline ? const Icon(Icons.circle, color: Colors.green,) : const Icon(Icons.circle, color: Colors.grey,),
+                  // trailing: friendListModel.friends[index].isOnline ? const Icon(Icons.circle, color: Colors.green,) : const Icon(Icons.circle, color: Colors.grey,),
                   onTap: () {
                     Navigator.push(
                       this.context,

@@ -890,7 +890,7 @@ class ChatPageState extends State<ChatPage> {
         uploadProcess.progress = 1;
 
         //延迟100毫秒，让进度条显示完成
-        Future.delayed(Duration(milliseconds: 100), () {
+        Future.delayed(const Duration(milliseconds: 100), () {
           uploadProcess.isComplete = true;
         });
 
@@ -898,9 +898,9 @@ class ChatPageState extends State<ChatPage> {
       });
 
       //如果文件已经上传过，直接返回文件的url
-      sendFileData(response.data);
 
-
+      //发送文件信息和文件名称
+      sendFileData(response.data,name:file.path.split('/').last);
 
       return response.data;
     }
@@ -975,7 +975,7 @@ class ChatPageState extends State<ChatPage> {
   }
 
   ///发送文件数据，通过socket发送
-  void sendFileData(Map<String, dynamic> data) {
+  void sendFileData(Map<String, dynamic> data, {String name = ''}) {
 
     var type = 'file';
     if(identityPicture(data['name'])){
@@ -999,7 +999,7 @@ class ChatPageState extends State<ChatPage> {
         'messageInfo': {
           'fileHash': data['hash'],
           'fileSize': data['size'],
-          'fileName': data['name'],
+          'fileName': name == '' ? data['name'] : name,
         }
       },
       'timestamp': DateTime.now().millisecondsSinceEpoch

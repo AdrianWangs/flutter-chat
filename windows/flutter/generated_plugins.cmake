@@ -11,7 +11,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   screen_brightness_windows
   screen_retriever
   sqlcipher_flutter_libs
-  sqlite3_flutter_libs
   url_launcher_windows
   window_manager
 )

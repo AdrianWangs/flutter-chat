@@ -11,6 +11,10 @@ class WebSocketManager {
     webSocketChannel = IOWebSocketChannel.connect(url);
     //每收到一条消息,就将消息广播给所有监听者
     webSocketChannel!.stream.listen((message) {
+
+      //去除重复的监听者
+      _listeners.toSet().toList();
+
       for (var listener in _listeners) {
 
         //如果执行出现异常,则移除该监听者

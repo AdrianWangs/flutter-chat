@@ -1,6 +1,7 @@
 
 // 实现好友列表的展示
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
@@ -50,6 +51,13 @@ class ChatListState extends State<ChatList> {
 
 
   void updatePage() {
+
+    //查看WebSocketManager中的receiveNewMessage方法是否还在监听
+    WebSocketManager.addListener(receiveNewMessage);
+
+
+
+
     updateChatList();
   }
 
@@ -259,18 +267,51 @@ class ChatListState extends State<ChatList> {
                       //点击好友头像，跳转到聊天页面
                       title: Text(friend.nickname),
                       subtitle: Text(friend.lastMessage),
-                      trailing: Text(
-                          DateTime.fromMillisecondsSinceEpoch(
-                              int.parse(friend.lastMessageTime))
-                              .toString(),
-                          style:
-                          const TextStyle(color: Colors.grey, fontSize: 14.0)),
+                      trailing: Text(getTime(int.parse(friend.lastMessageTime)),
+                          style:const TextStyle(color: Colors.grey, fontSize: 14.0)),
                     ),
                   );
                 },
-              ));
+              )
+          );
         },
       ),
     );
   }
+
+
+  //根据根据时间和当前时间的差值，返回一个字符串
+  String getTime(int timestamp) {
+    DateTime now = DateTime.now();
+    DateTime time = DateTime.fromMillisecondsSinceEpoch(timestamp);
+
+    Duration diff = now.difference(time);
+
+    print(diff.inMinutes);
+    print(diff.inHours);
+    print(diff.inDays);
+
+
+    if (diff.inMinutes < 1) {
+      return "刚刚";
+    } else if (diff.inMinutes < 60) {
+      return "${diff.inMinutes} 分钟前";
+    } else if (now.year == time.year &&
+        now.month == time.month &&
+        now.day == time.day) {
+      return "${time.hour}:${time.minute.toString().padLeft(2, '0')}";
+    }else if (diff.inDays == 1 || (now.year == time.year &&
+        now.month == time.month &&
+        now.day - time.day == 1)) {
+      return "昨天 ${time.hour}:${time.minute.toString().padLeft(2, '0')}";
+    } else if (diff.inDays == 2) {
+      return "前天 ${time.hour}:${time.minute.toString().padLeft(2, '0')}";
+    } else {
+      return "${time.year} 年 ${time.month} 月 ${time.day} 日";
+    }
+  }
+
+
+
+
 }

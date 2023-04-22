@@ -241,6 +241,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.1.1"
+  cropperx:
+    dependency: "direct main"
+    description:
+      name: cropperx
+      sha256: "62c73b4d18e4920fe914b27b45fabb0d5ea62099f35b62e94c81d0ffee35e702"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.1.1"
   cross_file:
     dependency: transitive
     description:
@@ -568,6 +576,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.0.2"
+  image_cropper:
+    dependency: "direct main"
+    description:
+      name: image_cropper
+      sha256: "60542ffd03436e6f80a1d7c9839f75b6a62b0a290cd98624fa29d150fdf672c8"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.5.1"
   image_picker:
     dependency: "direct main"
     description:
@@ -1077,14 +1093,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.11.0"
-  sqlite3_flutter_libs:
-    dependency: "direct main"
-    description:
-      name: sqlite3_flutter_libs
-      sha256: "02f80aea54a19a36b347dedf6d4181ecd9107f5831ea6139cfd0376a3de197ba"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.5.13"
   sqlparser:
     dependency: transitive
     description:

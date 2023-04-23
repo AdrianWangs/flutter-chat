@@ -33,6 +33,7 @@ android {
 
 
     compileOptions {
+
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -61,7 +62,6 @@ android {
 
 dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
-
 }
 
 

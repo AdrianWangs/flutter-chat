@@ -72,8 +72,14 @@ class ChatPageState extends State<ChatPage> {
 
   var tag = false;
 
+
+  //安卓通知
+  // 初始化本地通知插件
+
+
   @override
   void initState() {
+
     super.initState();
 
     // 在构造函数中初始化私有变量
@@ -288,6 +294,8 @@ class ChatPageState extends State<ChatPage> {
               displayMessage = "[未知消息]";
               break;
           }
+
+
 
           //如果存在
           if (value.isNotEmpty) {

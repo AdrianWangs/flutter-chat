@@ -5,6 +5,7 @@ class WebSocketManager {
 
   static final List<Function(dynamic)> _listeners = [];
 
+  //TODO 心跳监听
 
   static void connect(String url) {
 

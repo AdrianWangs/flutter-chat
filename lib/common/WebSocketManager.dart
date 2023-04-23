@@ -19,6 +19,7 @@ class WebSocketManager {
 
   static bool isConnect = false;
 
+  //TODO 心跳监听
 
   static void connect([String url = '']) {
 

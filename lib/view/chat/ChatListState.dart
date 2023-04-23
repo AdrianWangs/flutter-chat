@@ -143,11 +143,11 @@ class ChatListState extends State<ChatList> {
                   lastMessageTime: decodedMessage["timestamp"],
                   senderAccount: decodedMessage["sender"]['account'],
                   receiverAccount: decodedMessage["receiver"]['account'],
-                  account: decodedMessage["receiver"]['account']));
+                  account: decodedMessage["sender"]['account']));
         }
       });
 
-    //TODO 消息标红
+
 
     //将信息添加到数据库中
     _database.into(_database.chatData).insert(ChatDataCompanion.insert(
@@ -205,10 +205,10 @@ class ChatListState extends State<ChatList> {
         account: chatList['sender']['account']
     );
 
+
     //将好友添加到好友列表中
     Provider.of<ChatListModel>(copyContext, listen: false).addChat(chat);
-    //判断当前页面是
-
+    Provider.of<ChatListModel>(copyContext, listen: false).increaseUnreadMessageCount(chat.account);
   }
 
   //添加一个id
@@ -228,6 +228,10 @@ class ChatListState extends State<ChatList> {
                 itemBuilder: (context, index) {
                   Chat friend = friendListModel.chats.elementAt(index);
 
+
+                  print("============ThisFriend=============");
+                  print(friend.unreadMessageCount);
+
                   return InkWell(
                     onTap: () {
                       if (kDebugMode) {
@@ -235,6 +239,11 @@ class ChatListState extends State<ChatList> {
                         print(friend);
                         print("===================================");
                       }
+
+
+                      setState(() {
+                        friendListModel.chats[index].unreadMessageCount = 0;
+                      });
 
                       //跳转到聊天页面
                       var result =  Navigator.push(this.context,
@@ -253,20 +262,89 @@ class ChatListState extends State<ChatList> {
 
                     },
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: NetworkImage(
-                          friend.avatarUrl,
-                        ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      leading: Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: NetworkImage(friend.avatarUrl),
+                              radius: 24,
+                            ),
+                            if (friend.unreadMessageCount > 0) Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8.0)
+                                ),
+                                padding: EdgeInsets.all(4.0),
+                                child: Text(
+                                    friend.unreadMessageCount.toString(),
+                                    style: TextStyle(color: Colors.white, fontSize: 12.0)
+                                ),
+                              ),
+                            ),
+                          ]
                       ),
                       //点击好友头像，跳转到聊天页面
                       title: Text(friend.nickname),
                       subtitle: Text(friend.lastMessage),
-                      trailing: Text(getTime(int.parse(friend.lastMessageTime)),
-                          style:const TextStyle(color: Colors.grey, fontSize: 14.0)),
+                      trailing: Text(
+                          getTime(int.parse(friend.lastMessageTime)),
+                          style:const TextStyle(color: Colors.grey, fontSize: 14.0)
+                      ),
                     ),
                   );
                 },
+
               )
+
+            // body: ListView.builder(
+              //   itemCount: friendListModel.chats.length,
+              //   itemBuilder: (context, index) {
+              //     Chat friend = friendListModel.chats.elementAt(index);
+              //
+              //     return InkWell(
+              //       onTap: () {
+              //         if (kDebugMode) {
+              //           print("============ThisFriend=============");
+              //           print(friend);
+              //           print("===================================");
+              //         }
+              //
+              //         friendListModel.chats[index].unreadMessageCount = 0;
+              //
+              //         //跳转到聊天页面
+              //         var result =  Navigator.push(this.context,
+              //             MaterialPageRoute(builder: (context) {
+              //               return ChatPage(
+              //                   account: friend.account,
+              //                   nickname: friend.nickname,
+              //                   avatarUrl: friend.avatarUrl
+              //               );
+              //             }));
+              //
+              //         //页面返回后，更新好友列表
+              //         result.then((value) {
+              //           updatePage();
+              //         });
+              //
+              //       },
+              //       child: ListTile(
+              //         leading: CircleAvatar(
+              //           backgroundImage: NetworkImage(
+              //             friend.avatarUrl,
+              //           ),
+              //         ),
+              //         //点击好友头像，跳转到聊天页面
+              //         title: Text(friend.nickname),
+              //         subtitle: Text(friend.lastMessage),
+              //         trailing: Text(getTime(int.parse(friend.lastMessageTime)),
+              //             style:const TextStyle(color: Colors.grey, fontSize: 14.0)),
+              //       ),
+              //     );
+              //   },
+              // )
           );
         },
       ),

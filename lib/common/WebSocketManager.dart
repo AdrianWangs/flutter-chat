@@ -78,6 +78,7 @@ class WebSocketManager {
 
     // 处理队列中等待的消息
     for (var completer in _completers) {
+      //慢慢发，不要一次性发完
       completer.complete();
     }
     _completers.clear();
@@ -140,9 +141,10 @@ class WebSocketManager {
 
       Completer completer = Completer();
       _completers.add(completer);
+
+      // 等待连接成功
       await completer.future;
     }
-
     webSocketChannel!.sink.add(message);
     resetLastReceiveTime();
   }

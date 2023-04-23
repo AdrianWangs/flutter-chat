@@ -310,8 +310,8 @@ class ChatPageState extends State<ChatPage> {
                 avatarUrl: drift.Value(_avatarUrl),
                 lastMessage: drift.Value(displayMessage),
                 lastMessageTime: drift.Value(data["timestamp"]),
-                senderAccount: drift.Value(value[0].senderAccount),
-                receiverAccount: drift.Value(value[0].receiverAccount),
+                senderAccount: drift.Value(data["sender"]["account"]),
+                receiverAccount: drift.Value(data["receiver"]["account"]),
                 account: drift.Value(value[0].account))
             );
           } else {

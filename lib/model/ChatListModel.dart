@@ -9,10 +9,22 @@ class ChatListModel with ChangeNotifier {
   List<Chat> get chats => _chats.values.toList();
 
   void addChat(Chat chat) {
+
     print("============AddChat=============");
     print(chat);
     print("================================");
+    chat.unreadMessageCount = _chats[chat.account]?.unreadMessageCount ?? 0;
     _chats[chat.account] = chat;
+
+    notifyListeners();
+  }
+
+  void increaseUnreadMessageCount(String account) {
+
+    _chats[account]!.unreadMessageCount++;
+
+    print("============increaseUnreadMessageCount=============");
+    print(_chats[account]?.unreadMessageCount.toString());
     notifyListeners();
   }
 

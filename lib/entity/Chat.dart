@@ -6,6 +6,7 @@ class Chat {
   String lastMessage;
   String lastMessageTime;
   String account;
+  int unreadMessageCount = 0;
 
   Chat({
     required this.nickname,

@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void connectWebSocket() async {
     WebSocketManager.connect('${Env.SOCKET_HOST}/websocket/${Global.user['id']}');
-    WebSocketManager.addListener(listenNotification);
+    WebSocketManager.addListener("listenNotification",listenNotification);
   }
 
 

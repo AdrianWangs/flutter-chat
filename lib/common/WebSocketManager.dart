@@ -7,8 +7,10 @@ class WebSocketManager {
 
   static  String _url = "";
 
-  static final List<Function(dynamic)> _listeners = [];
+  // static final List<Function(dynamic)> _listeners = [];
   static final List<Completer<dynamic>> _completers = [];
+
+  static final Map<String,Function(dynamic)> _listeners = {};
 
   //TODO 心跳监听
   static int lastReceiveTime = DateTime.now().millisecondsSinceEpoch;
@@ -40,26 +42,24 @@ class WebSocketManager {
 
       //不管是不是心跳消息,都重置最后一次收到消息的时间
       resetLastReceiveTime();
-      //去除重复的监听者
-      _listeners.toSet().toList();
 
-      List<int> index = [];
+      List<String> index = [];
 
-      for (var listener in _listeners) {
+      for (var key in _listeners.keys) {
 
         //如果执行出现异常,则移除该监听者
         try {
-          listener(message);
+          _listeners[key]!(message);
         } catch (e) {
           print(e);
           print("~~~~~~~~~~~~移除监听者（可能是因为该对象已经销毁）~~~~~~~~~~~~~");
-          index.add(_listeners.indexOf(listener));
+          index.add(key);
         }
       }
 
       //移除监听者
       for(var i in index){
-        _listeners.removeAt(i);
+        _listeners.remove(i);
       }
 
     },onDone: () {
@@ -150,8 +150,8 @@ class WebSocketManager {
   }
 
   // Listen to incoming messages from the websocket and broadcast them to all listeners.
-  static void addListener(Function(dynamic) listener) {
-    _listeners.add(listener);
+  static void addListener(String tag,Function(dynamic) listener) {
+    _listeners[tag] = listener;
   }
 
   static void close() {

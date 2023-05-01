@@ -53,7 +53,7 @@ class ChatListState extends State<ChatList> {
   void updatePage() {
 
     //查看WebSocketManager中的receiveNewMessage方法是否还在监听
-    WebSocketManager.addListener(receiveNewMessage);
+    WebSocketManager.addListener("receiveNewMessage",receiveNewMessage);
 
     updateChatList();
   }
@@ -62,7 +62,7 @@ class ChatListState extends State<ChatList> {
   /// 初始化websocket
   void initWebSocket() async {
     //设置监听事件
-    WebSocketManager.addListener(receiveNewMessage);
+    WebSocketManager.addListener("receiveNewMessage",receiveNewMessage);
 
   }
 

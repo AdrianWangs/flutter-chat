@@ -160,7 +160,7 @@ class ChatPageState extends State<ChatPage> {
   ///即设置连接地址，开始监听消息
   void initWebSocket() {
 
-    WebSocketManager.addListener(handleMessage);
+    WebSocketManager.addListener("handleMessage",handleMessage);
 
   }
 
